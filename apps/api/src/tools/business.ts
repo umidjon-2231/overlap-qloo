@@ -85,7 +85,8 @@ export const cityFit = defineTool({
   name: "city_fit",
   description:
     `For each city and brand category, fetch Qloo's localised brand ranking (artist signal + signal.location, top ${LOCAL_DEPTH}). ` +
-    "For each shortlisted brand returns its local rank and affinity, or coverage 'none' when it has no local signal in that city's top list. " +
+    "For each shortlisted brand returns its local rank and affinity when it is in that city's local top list (extra local proof). " +
+    "inLocalTop: false is NOT evidence of weak fit: localised rankings favour brands with local signal and often omit national leaders, so national affinity still applies. " +
     "Also returns 'localStandouts': brands that rank high locally but are not on the shortlist. " +
     "Check locality.disambiguation: it shows which place Qloo resolved the city name to.",
   input: z.object({
@@ -123,10 +124,9 @@ export const cityFit = defineTool({
       }
       const cells = brand_ids.map((id) => {
         const b = best.get(id);
-        const coverage: Coverage = b ? "strong" : "none";
         return b
-          ? { brandId: id, name: b.name, localAffinity: b.affinity, localRank: b.rank, category: b.category, coverage }
-          : { brandId: id, name: null, localAffinity: null, localRank: null, category: null, coverage };
+          ? { brandId: id, name: b.name, inLocalTop: true, localRank: b.rank, localAffinity: b.affinity, category: b.category }
+          : { brandId: id, inLocalTop: false, fit: "national fit applies" };
       });
       const localStandouts = mine.map(({ category, r }) => ({
         category,
@@ -136,7 +136,7 @@ export const cityFit = defineTool({
           .map((b) => ({ brandId: b.entityId, name: b.name, localAffinity: b.affinity })),
       }));
       const callStatus = combineStatus(mine.map((j) => j.r.status));
-      const found = cells.filter((c) => c.coverage !== "none").length;
+      const found = cells.filter((c) => c.inLocalTop).length;
       const status: QlooStatus = callStatus !== "ok" ? callStatus : found === 0 ? "empty" : found < brand_ids.length ? "thin" : "ok";
       return {
         city,

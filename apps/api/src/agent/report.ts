@@ -18,7 +18,16 @@ export const reportSchema = z.object({
         call_id: callId.describe("Call whose result contains this brand"),
         category: z.enum([...categoryKeys, "any"]),
         source: z.enum(["seller_category", "agent_wildcard"]),
-        why: z.string().describe("One or two sentences: why this brand fits, citing the evidence"),
+        why: z
+          .string()
+          .min(30, "Give a real reason for every brand, or leave the brand out of the report.")
+          .refine((s) => !/placeholder|not used|\btbd\b|\btodo\b|lorem/i.test(s), {
+            message: "Placeholder text is not allowed. Remove brands you do not recommend instead of submitting them.",
+          })
+          .describe(
+            "One or two sentences on why this brand fits the whole property: lead with national standing, then name local ranks as extra proof " +
+              "(e.g. '#1 locally in Los Angeles'). Do not list cities where it is not in the local top, never call that a gap, and never limit the brand to some cities.",
+          ),
       }),
     )
     .min(1)

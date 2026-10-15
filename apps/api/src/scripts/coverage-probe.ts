@@ -36,7 +36,7 @@ for (const p of presets.filter((p) => !only || p.id === only)) {
     city: string;
     status: string;
     locality: { disambiguation?: string } | null;
-    cells: { coverage: string; name: string | null; localRank: number | null }[];
+    cells: { inLocalTop: boolean; name?: string; localRank?: number }[];
     localStandouts: { category: string; brands: { name: string }[] }[];
   }[];
 
@@ -44,7 +44,7 @@ for (const p of presets.filter((p) => !only || p.id === only)) {
     const hs = await cityHotspot.run({ artist_ids: artistIds, city }, ctx);
     const h = hs.data as { cellCount?: number; coverage: string; devotedPockets?: unknown[] };
     const f = fitData.find((x) => x.city === city)!;
-    const local = f.cells.filter((c) => c.coverage !== "none").length;
+    const local = f.cells.filter((c) => c.inLocalTop).length;
     console.log(
       `  ${city.padEnd(12)} heatmap ${String(h.cellCount ?? 0).padStart(5)} cells (${h.coverage}), ` +
         `${h.devotedPockets?.length ?? 0} devoted pockets | city_fit ${local}/${top.length} brands local | ` +
