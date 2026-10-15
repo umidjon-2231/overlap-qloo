@@ -1,6 +1,6 @@
 "use client";
 
-import { BRAND_CATEGORIES, type BrandCategory } from "@overlap/shared";
+import { BRAND_CATEGORIES, isSensitiveTag, type BrandCategory } from "@overlap/shared";
 import { useState } from "react";
 import type { BrandMatch, CityCell, CityProfile, HeatCell, Partner, RunPayload } from "@/lib/api";
 import { CallLink } from "./Provenance";
@@ -39,7 +39,7 @@ function BrandCard({ brand, top, cells, onPitch }: { brand: BrandMatch; top: boo
           <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
             <span className="rounded bg-zinc-100 px-1.5 py-0.5">{categoryLabel(brand.category)}</span>
             {brand.source === "agent_wildcard" && <span className="rounded bg-decision-soft px-1.5 py-0.5 text-decision">Agent wildcard</span>}
-            <CoverageBadge coverage={localCities === 0 ? "none" : localCities < cells.length ? "thin" : "strong"} label={`local signal in ${localCities}/${cells.length} cities`} />
+            {localCities > 0 && <CoverageBadge coverage="strong" label={`in local top 30: ${localCities}/${cells.length} cities`} />}
           </div>
         </div>
         <div className="text-right" title="Overlap score = Qloo audience affinity × 100">
@@ -138,8 +138,12 @@ export function CityGrid({ data }: { data: RunPayload }) {
                   const best = bestInCity.get(city) === b.brandEntityId;
                   if (!c || c.coverage === "none")
                     return (
-                      <td key={city} className="p-3 text-xs text-muted" title="Not in this city's local Qloo ranking">
-                        no local signal
+                      <td
+                        key={city}
+                        className="p-3 text-xs text-muted"
+                        title="Not in this city's local top-30 ranking. Qloo's localised rankings favour brands with local signal and often omit national leaders, so this is not evidence of weak fit."
+                      >
+                        national fit
                       </td>
                     );
                   const shade = c.rankInCity! <= 1 ? "bg-evidence/15" : c.rankInCity! <= 3 ? "bg-evidence/10" : "bg-evidence/5";
@@ -169,8 +173,9 @@ export function CityGrid({ data }: { data: RunPayload }) {
         </table>
       </Card>
       <p className="mt-2 text-xs text-muted">
-        Ringed cell = the shortlisted brand that ranks best locally in that city. Local affinity is rescaled within each city&apos;s query, so
-        compare ranks across cities, not raw scores.
+        #rank = position in that city&apos;s local top-30 Qloo ranking for the brand&apos;s category (extra local proof). &quot;National fit&quot; = not
+        in the local top 30, which is not evidence of weak fit. Ringed cell = the shortlisted brand ranking best locally. Local scores are
+        rescaled per city, so compare ranks, not scores.
       </p>
     </section>
   );
@@ -211,8 +216,11 @@ function Spot({ label, cell }: { label: string; cell?: HeatCell }) {
 }
 
 function CityCard({ city, profile, partners }: { city: string; profile?: CityProfile; partners: Partner[] }) {
-  const crowd = profile?.evidence.crowd.find((c) => c?.tasteTags) ?? null;
-  const demo = profile?.evidence.crowd.find((c) => c?.demographics)?.demographics ?? null;
+  // Crowd evidence holds the logged results of the cited calls: taste tags ({items}) and demographics ({age, gender}).
+  const tagEntry = profile?.evidence.crowd.find((c) => c && "items" in c);
+  const tags = tagEntry && "items" in tagEntry ? tagEntry.items.filter((t) => !isSensitiveTag(t)) : null;
+  const demoEntry = profile?.evidence.crowd.find((c) => c && "age" in c);
+  const demo = demoEntry && "age" in demoEntry ? demoEntry : null;
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
@@ -231,15 +239,15 @@ function CityCard({ city, profile, partners }: { city: string; profile?: CityPro
         </div>
       )}
 
-      {(crowd?.tasteTags?.length || demo) && (
+      {(tags?.length || demo) && (
         <div className="mt-3 rounded-md bg-evidence-soft/60 p-2">
           <div className="flex items-center gap-2">
             <QlooLabel />
             {profile?.evidence.crowdCallIds.map((id) => <CallLink key={id} callId={id} />)}
           </div>
-          {crowd?.tasteTags && (
+          {tags && (
             <div className="mt-1 flex flex-wrap gap-1">
-              {crowd.tasteTags.slice(0, 10).map((t) => (
+              {tags.slice(0, 10).map((t) => (
                 <span key={t.tagId} className="rounded bg-surface px-1.5 py-0.5 text-[11px]">
                   {t.name}
                 </span>

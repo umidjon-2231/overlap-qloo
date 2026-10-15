@@ -110,7 +110,8 @@ export interface CityProfile {
     heatmapCallId: number | null;
     crowdCallIds: number[];
     localFitCallIds: number[];
-    crowd: ({ tasteTags?: TagInsight[]; demographics?: { age: Record<string, number>; gender: Record<string, number> } | null } | null)[];
+    /** Logged results of crowdCallIds, in order: taste tags or demographics. */
+    crowd: ({ items: TagInsight[] } | { age: Record<string, number>; gender: Record<string, number> } | null)[];
   };
 }
 

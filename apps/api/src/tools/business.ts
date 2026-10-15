@@ -2,6 +2,7 @@
 import { z } from "zod";
 import {
   BRAND_CATEGORIES,
+  isSensitiveTag,
   PLACE_KINDS,
   type BrandCategory,
   type Coverage,
@@ -200,9 +201,6 @@ export const localPartners = defineTool({
   },
 });
 
-// Qloo safe use: never infer sensitive traits (orientation, religion, politics, health) about an audience.
-const SENSITIVE_TAG = /\b(queer|lgbt\w*|gay|lesbian|bisexual|trans\w*|religio\w*|christian|muslim|islam\w*|jewish|hindu|buddhis\w*|politic\w*|conservative|liberal|health|disabilit\w*|mental)\b/i;
-
 export const crowdProfile = defineTool({
   name: "crowd_profile",
   description:
@@ -219,7 +217,7 @@ export const crowdProfile = defineTool({
       data: {
         city,
         locality: tags.data?.locality ?? null,
-        tasteTags: (tags.data?.items ?? []).filter((t) => !SENSITIVE_TAG.test(`${t.name} ${t.tagId}`)),
+        tasteTags: (tags.data?.items ?? []).filter((t) => !isSensitiveTag(t)),
         demographics: demo.data ?? null,
         demographicsScope: "global audience, relative to average",
       },

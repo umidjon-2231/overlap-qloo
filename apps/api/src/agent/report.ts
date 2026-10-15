@@ -118,13 +118,10 @@ export async function materializeReport(runId: string, report: Report): Promise<
         if (idx >= 0 && (!best || idx + 1 < best.rank)) best = { affinity: items(cid)[idx].affinity, rank: idx + 1, callId: cid };
       }
       const coverage: Coverage = best ? "strong" : "none";
-      return { runId, brandEntityId: brandId, city: c.city, affinity: best?.affinity ?? null, rankInCity: best?.rank ?? null, coverage, callId: best?.callId };
+      return { runId, brandEntityId: brandId, city: c.city, affinity: best?.affinity ?? null, rankInCity: best?.rank ?? null, coverage, callId: best?.callId ?? null };
     });
     if (cells.length) {
-      await db
-        .insert(cityCells)
-        .values(cells.map(({ callId: _c, ...cell }) => cell))
-        .onConflictDoNothing();
+      await db.insert(cityCells).values(cells).onConflictDoNothing();
     }
 
     const hm = c.heatmap_call_id ? (calls.get(c.heatmap_call_id)?.resultSummary as Summary) : null;

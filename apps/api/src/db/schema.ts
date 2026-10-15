@@ -69,6 +69,8 @@ export const cityCells = pgTable(
     affinity: doublePrecision("affinity"),
     rankInCity: integer("rank_in_city"),
     coverage: text("coverage").notNull(),
+    /** The Qloo call whose local ranking contains this rank. */
+    callId: integer("call_id"),
   },
   (t) => [primaryKey({ columns: [t.runId, t.brandEntityId, t.city] })],
 );

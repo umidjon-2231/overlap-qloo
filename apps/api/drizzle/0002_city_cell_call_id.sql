@@ -1,0 +1,1 @@
+ALTER TABLE "city_cells" ADD COLUMN "call_id" integer;

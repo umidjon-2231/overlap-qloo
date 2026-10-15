@@ -11,7 +11,8 @@
     "probe": "tsx --env-file=../../.env src/scripts/coverage-probe.ts",
     "tool": "tsx --env-file=../../.env src/scripts/tool.ts",
     "agent": "tsx --env-file=../../.env src/scripts/run-agent.ts",
-    "bakeoff": "tsx --env-file=../../.env src/scripts/bakeoff.ts"
+    "bakeoff": "tsx --env-file=../../.env src/scripts/bakeoff.ts",
+    "pitch-evidence": "tsx --env-file=../../.env src/scripts/pitch-evidence.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.134.0",
