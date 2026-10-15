@@ -113,8 +113,36 @@ api.get("/runs/:id", async (c) => {
     db.select().from(pitchPacks).where(eq(pitchPacks.runId, id)),
   ]);
   brands.sort((a, b) => (b.affinity ?? 0) - (a.affinity ?? 0));
-  return c.json({ run: rest, brands, cells, profiles, partners, pitches });
+  return c.json({ run: rest, brands, cells, profiles, partners, pitches, standouts: await localStandouts(profiles, brands) });
 });
+
+/** Per city: brands that rank high in the local rankings but are not on the shortlist (from logged calls). */
+async function localStandouts(
+  profiles: (typeof cityProfiles.$inferSelect)[],
+  brands: (typeof brandMatches.$inferSelect)[],
+): Promise<Record<string, { brandId: string; name: string; localAffinity: number | null; callId: number }[]>> {
+  const shortlist = new Set(brands.map((b) => b.brandEntityId));
+  const callIdsByCity = new Map(
+    profiles.map((p) => [p.city, ((p.evidence as { localFitCallIds?: number[] }).localFitCallIds ?? []) as number[]]),
+  );
+  const allIds = [...new Set([...callIdsByCity.values()].flat())];
+  if (!allIds.length) return {};
+  const rows = await db.select().from(toolCalls).where(inArray(toolCalls.id, allIds));
+  const out: Record<string, { brandId: string; name: string; localAffinity: number | null; callId: number }[]> = {};
+  for (const [city, ids] of callIdsByCity) {
+    const seen = new Map<string, { brandId: string; name: string; localAffinity: number | null; callId: number }>();
+    for (const row of rows.filter((r) => ids.includes(r.id))) {
+      const items = ((row.resultSummary as { items?: { entityId: string; name: string; affinity: number | null }[] })?.items ?? []).slice(0, 5);
+      for (const b of items) {
+        if (!shortlist.has(b.entityId) && !seen.has(b.entityId)) {
+          seen.set(b.entityId, { brandId: b.entityId, name: b.name, localAffinity: b.affinity, callId: row.id });
+        }
+      }
+    }
+    out[city] = [...seen.values()].sort((a, b) => (b.localAffinity ?? 0) - (a.localAffinity ?? 0)).slice(0, 5);
+  }
+  return out;
+}
 
 api.get("/runs/:id/stream", (c) => {
   const id = c.req.param("id");
