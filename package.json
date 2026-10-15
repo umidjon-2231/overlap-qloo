@@ -1,0 +1,18 @@
+{
+  "name": "overlap",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @overlap/api --filter @overlap/web dev",
+    "dev:api": "pnpm --filter @overlap/api dev",
+    "dev:web": "pnpm --filter @overlap/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @overlap/api db:generate",
+    "db:migrate": "pnpm --filter @overlap/api db:migrate"
+  }
+}

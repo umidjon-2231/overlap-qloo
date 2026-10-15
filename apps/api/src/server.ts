@@ -1,0 +1,24 @@
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { sql } from "./db/client.js";
+import { env } from "./env.js";
+
+const app = new Hono();
+
+app.use("*", logger());
+app.use("*", cors({ origin: env.WEB_ORIGIN }));
+
+app.get("/health", async (c) => {
+  try {
+    await sql`select 1`;
+    return c.json({ ok: true, db: "up", anthropicKey: Boolean(env.anthropicApiKey) });
+  } catch {
+    return c.json({ ok: false, db: "down" }, 503);
+  }
+});
+
+serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
+  console.log(`api listening on http://localhost:${info.port}`);
+});

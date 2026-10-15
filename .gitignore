@@ -1,0 +1,29 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# env & secrets — never commit keys
+.env
+.env.*
+!.env.example
+
+# build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Qloo data must never be committed (cached at runtime only)
+data/
+*.qloo.json
+probe/
+
+# private research notes (kept local only)
+RESEARCH.md
+
+# misc
+.DS_Store
+*.log
+coverage/
+.vercel
