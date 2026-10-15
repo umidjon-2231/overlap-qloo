@@ -7,7 +7,9 @@
     "dev": "tsx watch --env-file=../../.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file=../../.env src/db/migrate.ts"
+    "db:migrate": "tsx --env-file=../../.env src/db/migrate.ts",
+    "probe": "tsx --env-file=../../.env src/scripts/coverage-probe.ts",
+    "tool": "tsx --env-file=../../.env src/scripts/tool.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.134.0",
