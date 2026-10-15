@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 
@@ -7,6 +8,8 @@ const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"
 const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
+  // Absolute base for og:image and other metadata URLs.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Overlap: sponsorship agent",
   description: "Tell us your tour. We tell you which brands to pitch, in which cities, and why.",
 };
@@ -17,9 +20,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span className="inline-block h-3 w-3 rounded-full bg-decision" aria-hidden />
-              Overlap
+            <Link href="/" className="flex items-center">
+              <Image src="/brand/overlap-logo-horizontal-light.svg" alt="Overlap" width={624} height={174} priority unoptimized className="h-7 w-auto" />
             </Link>
             <span className="text-xs text-muted">Sponsorship agent · evidence from Qloo taste data</span>
           </div>

@@ -22,6 +22,9 @@ probe/
 # private research notes (kept local only)
 RESEARCH.md
 
+# source archives (unpacked into brand/)
+*.zip
+
 # misc
 .DS_Store
 *.log
