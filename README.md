@@ -6,6 +6,8 @@ Overlap is a sell-side sponsorship agent for artist tours and festivals. A spons
 
 Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Product spec: [`PRODUCT.md`](PRODUCT.md).
 
+Docs: [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Rules](docs/RULES.md) · [Qloo API notes](docs/QLOO_API.md) · [Development](docs/DEVELOPMENT.md) · [Bake-off](docs/BAKEOFF.md) · [Next session](docs/NEXT_SESSION.md)
+
 ## How it works
 
 ```
