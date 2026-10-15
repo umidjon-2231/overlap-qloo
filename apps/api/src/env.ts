@@ -9,9 +9,15 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   API_PORT: z.coerce.number().int().default(8787),
   WEB_ORIGIN: z.string().default("http://localhost:3000"),
-  RUN_TOOL_CALL_LIMIT: z.coerce.number().int().default(20),
+  AGENT_MODEL: z.string().default("claude-sonnet-5-5"),
+  AGENT_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  AGENT_TOOLSET: z.enum(["business", "raw"]).default("business"),
+  PITCH_MODEL: z.string().optional(),
+  /** Agent tool calls per run with the business toolset (raw toolset gets twice this). */
+  RUN_TOOL_CALL_LIMIT: z.coerce.number().int().default(30),
   RUN_QLOO_CALL_LIMIT: z.coerce.number().int().default(120),
-  RUN_TOKEN_BUDGET: z.coerce.number().int().default(200_000),
+  /** Input + output tokens per run (cached reads count at 10%). */
+  RUN_TOKEN_BUDGET: z.coerce.number().int().default(600_000),
   CACHE_TTL_HOURS: z.coerce.number().default(24),
 });
 

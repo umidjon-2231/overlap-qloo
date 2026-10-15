@@ -12,7 +12,7 @@ export const presets: Preset[] = [
     propertyType: "artist_tour",
     propertyName: "Phoebe Bridgers: US tour",
     artists: [{ query: "Phoebe Bridgers" }],
-    cities: ["Chicago", "Austin", "New York", "Los Angeles", "Seattle"],
+    cities: ["Chicago", "Austin", "New York City", "Los Angeles", "Seattle"],
     categories: ["drinks", "electronics", "fashion", "travel"],
   },
   {

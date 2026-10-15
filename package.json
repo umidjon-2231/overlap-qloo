@@ -15,6 +15,8 @@
     "db:generate": "pnpm --filter @overlap/api db:generate",
     "db:migrate": "pnpm --filter @overlap/api db:migrate",
     "probe": "pnpm --filter @overlap/api probe",
-    "tool": "pnpm --filter @overlap/api tool"
+    "tool": "pnpm --filter @overlap/api tool",
+    "agent": "pnpm --filter @overlap/api agent",
+    "bakeoff": "pnpm --filter @overlap/api bakeoff"
   }
 }

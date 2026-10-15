@@ -24,8 +24,18 @@ export const runs = pgTable("runs", {
   cities: text("cities").array().notNull(),
   categories: text("categories").array().$type<BrandCategory[]>().notNull(),
   status: text("status").$type<RunStatus>().notNull().default("running"),
+  presetId: text("preset_id"),
   model: text("model"),
+  effort: text("effort"),
+  toolset: text("toolset"),
   agentState: jsonb("agent_state"),
+  /** Pending ask_user question while status = needs_input. */
+  pendingInput: jsonb("pending_input"),
+  summary: text("summary"),
+  /** Token usage, cost estimate, timings, tool counts. */
+  usage: jsonb("usage"),
+  /** Report items checked against logged Qloo calls. */
+  grounding: jsonb("grounding"),
   error: text("error"),
   createdAt: createdAt(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
