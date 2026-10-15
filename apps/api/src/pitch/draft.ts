@@ -72,7 +72,7 @@ export async function pitchEvidence(runId: string, brandId: string) {
 export async function draftPitch(runId: string, brandId: string): Promise<{ bodyMd: string; usage: unknown } | null> {
   const evidence = await pitchEvidence(runId, brandId);
   if (!evidence) return null;
-  const model = env.PITCH_MODEL ?? env.AGENT_MODEL;
+  const model = env.PITCH_MODEL;
 
   const message = await anthropic.beta.messages
     .stream({

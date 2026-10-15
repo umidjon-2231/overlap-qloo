@@ -9,10 +9,13 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   API_PORT: z.coerce.number().int().default(8787),
   WEB_ORIGIN: z.string().default("http://localhost:3000"),
-  AGENT_MODEL: z.string().default("claude-sonnet-5-5"),
-  AGENT_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  // Defaults chosen by the bake-off (docs/BAKEOFF.md): Haiku 5.5 at high effort with business tools
+  // matched Sonnet's groundedness and completeness at ~1/15 of the cost.
+  AGENT_MODEL: z.string().default("claude-haiku-5-5"),
+  AGENT_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("high"),
   AGENT_TOOLSET: z.enum(["business", "raw"]).default("business"),
-  PITCH_MODEL: z.string().optional(),
+  /** The pitch pack is the deliverable sellers read; drafted on demand. */
+  PITCH_MODEL: z.string().default("claude-sonnet-5-5"),
   /** Agent tool calls per run with the business toolset (raw toolset gets twice this). */
   RUN_TOOL_CALL_LIMIT: z.coerce.number().int().default(30),
   RUN_QLOO_CALL_LIMIT: z.coerce.number().int().default(120),
