@@ -241,6 +241,9 @@ async function runLoop(runId: string): Promise<void> {
       const parsed = reportSchema.safeParse(submit.input);
       if (!parsed.success) {
         state.validationErrors++;
+        // Show rejections in the trace; the agent gets the issues back and resubmits.
+        await emit(runId, "tool_start", { id: submit.id, name: "submit_report", input: {} });
+        await emit(runId, "tool_end", { id: submit.id, name: "submit_report", status: "error", note: `Report rejected: ${z.prettifyError(parsed.error)}` });
         results.push({ type: "tool_result", tool_use_id: submit.id, is_error: true, content: `Invalid report: ${parsed.error.message}` });
       } else {
         await emit(runId, "tool_start", { id: submit.id, name: "submit_report", input: { brands: parsed.data.brands.length, cities: parsed.data.cities.length } });

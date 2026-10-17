@@ -39,9 +39,10 @@ On the current dev machine the database is the existing `dev-postgres` container
 | `pnpm db:generate` / `db:migrate` | Drizzle migrations |
 | `pnpm tool <name> '<json>'` | run one agent tool against Qloo |
 | `pnpm probe [presetId]` | coverage check for presets |
-| `pnpm agent <presetId> [model] [effort] [toolset]` | headless agent run with trace |
+| `pnpm agent <presetId> [model] [effort] [toolset]` | headless agent run with trace; a successful run becomes the preset's cached result |
 | `pnpm bakeoff [quick]` | model × effort × toolset comparison |
 | `pnpm --filter @overlap/api pitch-evidence <runId> "<brand>"` | show the pitch writer's evidence pack |
+| `pnpm --filter @overlap/api check-report <runId>` | re-validate a run's submitted reports against the current report schema |
 
 ## Production
 

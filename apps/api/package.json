@@ -12,7 +12,8 @@
     "tool": "tsx --env-file=../../.env src/scripts/tool.ts",
     "agent": "tsx --env-file=../../.env src/scripts/run-agent.ts",
     "bakeoff": "tsx --env-file=../../.env src/scripts/bakeoff.ts",
-    "pitch-evidence": "tsx --env-file=../../.env src/scripts/pitch-evidence.ts"
+    "pitch-evidence": "tsx --env-file=../../.env src/scripts/pitch-evidence.ts",
+    "check-report": "tsx --env-file=../../.env src/scripts/check-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.134.0",

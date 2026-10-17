@@ -23,7 +23,8 @@ const short = (v: unknown, n = 160) => {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 };
 
-const run = await runHeadless(preset, config, {
+// Tagged with the preset id so a successful run becomes the cached result the UI's "Open" button loads.
+const run = await runHeadless({ ...preset, presetId: preset.id }, config, {
   autoResolve: true,
   onEvent: (e) => {
     const p = e.payload as Record<string, unknown>;
