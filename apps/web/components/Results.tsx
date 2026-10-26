@@ -206,8 +206,15 @@ function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => v
   return (
     <div>
       <p className="max-w-[72ch] text-[1.05rem] leading-relaxed">
-        Without Qloo, the model named <b>{result.picks.length} brands</b>. <b className="text-evidence">{backed}</b> of them are on Overlap&apos;s
-        Qloo-grounded shortlist; the rest have no audience evidence behind them here.
+        Without Qloo, the model named <b>{result.picks.length} brands</b>.{" "}
+        {backed === 0 ? (
+          <>None of them is on Overlap&apos;s Qloo-grounded shortlist; none has audience evidence behind it here.</>
+        ) : (
+          <>
+            <b className="text-evidence">{backed}</b> {backed === 1 ? "of them is" : "of them are"} on Overlap&apos;s Qloo-grounded shortlist
+            {backed < result.picks.length ? "; the rest have no audience evidence behind them here." : "."}
+          </>
+        )}
         {result.missed.length > 0 && (
           <>
             {" "}

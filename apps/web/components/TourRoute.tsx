@@ -27,6 +27,11 @@ export interface TourRouteProps {
   /** The run (or replay) has finished: visit any remaining cities, pull back, then call onFinished. */
   done: boolean;
   onFinished?: () => void;
+  /** The bus is the stage's clock: the parent owns where it is and where it has been. */
+  here: string | null;
+  visited: string[];
+  onArrive: (city: string) => void;
+  onLeave: () => void;
 }
 
 function useLayout(cities: string[]) {
@@ -81,8 +86,7 @@ export function TourRoute(props: TourRouteProps) {
 
 function TourRouteCanvas(props: TourRouteProps) {
   const anchors = useRef<Anchors>(new Map());
-  const [here, setHere] = useState<string | null>(null);
-  const [visited, setVisited] = useState<string[]>([]);
+  const { here, visited } = props;
   const bind = (key: string) => (el: HTMLElement | null) => {
     if (el) anchors.current.set(key, el);
     else anchors.current.delete(key);
@@ -90,7 +94,7 @@ function TourRouteCanvas(props: TourRouteProps) {
   return (
     <div className="relative h-[15rem] w-full overflow-hidden sm:h-[24rem]">
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true, alpha: true }} aria-hidden="true">
-        <Scene {...props} anchors={anchors} here={here} setHere={setHere} visited={visited} setVisited={setVisited} />
+        <Scene {...props} anchors={anchors} />
       </Canvas>
       <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
         {props.cities.map((city) => {
@@ -128,15 +132,9 @@ function Scene({
   onFinished,
   anchors,
   here,
-  setHere,
-  setVisited,
-}: TourRouteProps & {
-  anchors: React.RefObject<Anchors>;
-  here: string | null;
-  setHere: (c: string | null) => void;
-  visited: string[];
-  setVisited: React.Dispatch<React.SetStateAction<string[]>>;
-}) {
+  onArrive,
+  onLeave,
+}: TourRouteProps & { anchors: React.RefObject<Anchors> }) {
   const layout = useLayout(cities);
   const { size } = useThree();
   const camRef = useRef<THREE.OrthographicCamera>(null);
@@ -155,7 +153,7 @@ function Scene({
   }, [visitOrder, cities, done]);
 
   const offset = useMemo(() => new THREE.Vector3(6, 11, 12), []);
-  const followZoom = size.width / (SPACING * (size.width < 640 ? 2.2 : 3.4));
+  const followZoom = Math.min(size.width / (SPACING * (size.width < 640 ? 2.5 : 3.8)), size.height / 6.2);
   const fitZoom = Math.min(followZoom, size.width / (layout.length * 0.86 + 4));
 
   useFrame((state, dt) => {
@@ -181,12 +179,11 @@ function Scene({
         n.u += Math.sign(delta) * move;
         n.heading = Math.sign(delta);
         n.wheel += Math.sign(delta) * DRIVE_SPEED * step * 6;
-        if (here) setHere(null);
+        if (here) onLeave();
       } else {
         n.u = goalU;
         if (here !== goal) {
-          setHere(goal);
-          setVisited((v) => (v.includes(goal) ? v : [...v, goal]));
+          onArrive(goal);
           n.dwell = 0;
         }
         n.dwell += step;
@@ -195,7 +192,7 @@ function Scene({
         else if (n.dwell > DWELL_S && done && n.stop === queue.length - 1 && n.finishedAt < 0) {
           n.finishedAt = state.clock.elapsedTime;
           setOverview(true);
-          setHere(null);
+          onLeave();
         }
       }
     }
@@ -222,7 +219,8 @@ function Scene({
       const want = overview
         ? new THREE.Vector3((layout.stops[0]!.x + layout.stops.at(-1)!.x) / 2, 0, 0)
         : bus
-          ? bus.position.clone().setY(0)
+          ? // Look a little behind the road so the skylines and tags sit inside the band.
+            bus.position.clone().setY(0).add(new THREE.Vector3(0, 0, -0.55))
           : focus.current;
       focus.current.lerp(want, still ? 1 : 1 - Math.exp(-step * 2.4));
       cam.position.copy(focus.current).add(offset);
@@ -233,19 +231,20 @@ function Scene({
       cam.updateMatrixWorld();
 
       // Place the DOM labels: city names just in front of each stop, brand tags above it.
-      const place = (key: string, p: THREE.Vector3) => {
+      const place = (key: string, p: THREE.Vector3, minY = 0, maxY = size.height) => {
         const el = anchors.current?.get(key);
         if (!el) return;
         scratch.copy(p).project(cam);
         const x = ((scratch.x + 1) / 2) * size.width;
-        const y = ((1 - scratch.y) / 2) * size.height;
+        const y = Math.min(maxY, Math.max(minY, ((1 - scratch.y) / 2) * size.height));
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
         el.style.opacity = "1";
       };
       cities.forEach((city, i) => {
         const s = layout.stops[i]!;
-        place(`label:${city}`, new THREE.Vector3(s.x, 0, s.z + 0.95));
-        place(`tag:${city}`, new THREE.Vector3(s.x, 0.9, s.z - 0.2));
+        // Labels stay above the bottom rule; tags (up to two, about 50px tall) stay 16px below the top rule.
+        place(`label:${city}`, new THREE.Vector3(s.x, 0, s.z + 0.95), 0, size.height - 30);
+        place(`tag:${city}`, new THREE.Vector3(s.x, 0.9, s.z - 0.2), 66);
       });
     }
   });
@@ -334,20 +333,43 @@ function Skyline({ city, position, state }: { city: string; position: THREE.Vect
     },
     [geos, edges],
   );
-  const fill = state === "printed" ? INK : PAPER;
-  const line = state === "working" ? CORAL : state === "printed" ? PAPER : INK;
+  // The ink layer prints up from the ground over the outline, like a pull of the squeegee.
+  const ink = useRef<THREE.Group>(null);
+  const still = useMemo(reducedMotion, []);
+  useFrame((_, dt) => {
+    const g = ink.current;
+    if (!g) return;
+    const target = state === "printed" ? 1 : 0;
+    const k = still ? 1 : 1 - Math.exp(-Math.min(dt, 0.05) * 4.5);
+    g.scale.y += (target - g.scale.y) * k;
+    if (Math.abs(target - g.scale.y) < 0.002) g.scale.y = target;
+    g.visible = g.scale.y > 0.01;
+  });
+  const line = state === "working" ? CORAL : INK;
   return (
     <group position={[position.x, 0, position.z - 1.35]}>
       {blocks.map((b, i) => (
         <group key={i} position={[b.x, b.h / 2, (i % 2) * 0.22]}>
           <mesh geometry={geos[i]}>
-            <meshBasicMaterial color={fill} />
+            <meshBasicMaterial color={PAPER} />
           </mesh>
           <lineSegments geometry={edges[i]}>
             <lineBasicMaterial color={line} />
           </lineSegments>
         </group>
       ))}
+      <group ref={ink} scale={[1, 0, 1]}>
+        {blocks.map((b, i) => (
+          <group key={i} position={[b.x, b.h / 2, (i % 2) * 0.22]} scale={1.004}>
+            <mesh geometry={geos[i]}>
+              <meshBasicMaterial color={INK} />
+            </mesh>
+            <lineSegments geometry={edges[i]}>
+              <lineBasicMaterial color={PAPER} />
+            </lineSegments>
+          </group>
+        ))}
+      </group>
     </group>
   );
 }

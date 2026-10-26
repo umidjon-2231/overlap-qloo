@@ -99,8 +99,7 @@ a {
 
 /* Display voice: Bricolage Grotesque at its narrowest width, heavy, caps. */
 .display {
-  font-family: var(--font-display-face), sans-serif;
-  font-variation-settings: "wdth" 75, "opsz" 96;
+  font-family: var(--font-stack), var(--font-display-face), sans-serif;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: -0.01em;

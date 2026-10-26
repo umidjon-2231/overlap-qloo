@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
@@ -7,6 +8,8 @@ import "./globals.css";
 const display = Bricolage_Grotesque({ variable: "--font-display-face", subsets: ["latin"], axes: ["wdth", "opsz"] });
 const ui = Inter({ variable: "--font-ui", subsets: ["latin"] });
 const data = JetBrains_Mono({ variable: "--font-data", subsets: ["latin"] });
+// The condensed caps as a static cut with overlapping contours removed, so outlined (text-stroke) city names print clean.
+const stack = localFont({ src: "./fonts/bricolage-stack.woff2", variable: "--font-stack", weight: "800", display: "swap" });
 
 export const metadata: Metadata = {
   // Absolute base for og:image and other metadata URLs.
@@ -17,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${ui.variable} ${data.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} ${stack.variable} ${ui.variable} ${data.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <header className="on-ink bg-ink text-on-ink">
           <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6">

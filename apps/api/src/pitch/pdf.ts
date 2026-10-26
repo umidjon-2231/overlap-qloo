@@ -13,6 +13,11 @@ const FONTS = {
   bold: asset("fonts/Inter-SemiBold.ttf"),
 };
 const MARK = asset("mark-dark.png");
+const MONO = asset("fonts/JetBrainsMono-Regular.ttf");
+
+/** Data figures set in mono: call references and ranks (#1186, #3), decimals (0.931), signed skews (+0.43).
+    Plain prose numbers ("a 20-minute call") stay in the body face. Capturing group for split(). */
+const NUMERIC = /((?:call |Qloo )?#\d+|[+-]?\d+\.\d+)/g;
 
 const INK = "#111216";
 const INK_SOFT = "#5d5f66";
@@ -47,6 +52,7 @@ export function renderPitchPdf(title: string, markdown: string, approvedAt?: Dat
   doc.registerFont("displayWide", FONTS.displayWide);
   doc.registerFont("body", FONTS.body);
   doc.registerFont("bold", FONTS.bold);
+  doc.registerFont("mono", MONO);
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<Buffer>((resolve) => doc.on("end", () => resolve(Buffer.concat(chunks))));
@@ -55,8 +61,7 @@ export function renderPitchPdf(title: string, markdown: string, approvedAt?: Dat
   const bandH = 168;
   doc.rect(0, 0, PAGE_W, bandH).fill(INK);
   doc.image(MARK, PAGE_W - M - 74, 40, { width: 74 });
-  doc.font("bold").fontSize(8).fillColor(ON_INK_SOFT).text("PITCH PACK", M, 44, { characterSpacing: 1.2 });
-  doc.font("display").fontSize(30).fillColor(PAPER).text(title.toUpperCase(), M, 62, { width: WIDTH - 100, lineGap: -4 });
+  doc.font("display").fontSize(30).fillColor(PAPER).text(title.toUpperCase(), M, 46, { width: WIDTH - 100, lineGap: -4 });
   const stamp = approvedAt ? `approved by the seller on ${approvedAt.toISOString().slice(0, 10)}` : "approved by the seller";
   doc
     .font("body")
@@ -69,14 +74,20 @@ export function renderPitchPdf(title: string, markdown: string, approvedAt?: Dat
   // Inline **bold** as runs of SemiBold within a paragraph.
   const rich = (text: string, opts: PDFKit.Mixins.TextOptions & { x?: number; size?: number; color?: string } = {}) => {
     const { x = doc.x, size = 10, color = INK, ...rest } = opts;
+    // Runs: **bold** spans, and within every span the figures (affinities, ranks, call IDs) in tabular mono.
     const segs = clean(text)
       .split(/\*\*(.+?)\*\*/g)
-      .map((s, i) => ({ s: s.replace(/\*(.+?)\*/g, "$1"), bold: i % 2 === 1 }))
+      .flatMap((s, i) =>
+        s
+          .replace(/\*(.+?)\*/g, "$1")
+          .split(NUMERIC)
+          .map((part, j) => ({ s: part, font: j % 2 === 1 ? "mono" : i % 2 === 1 ? "bold" : "body" })),
+      )
       .filter((p) => p.s);
     doc.fillColor(color).fontSize(size);
     // pdfkit continues a paragraph across font changes only when later runs pass no position or layout options.
     segs.forEach((p, i) => {
-      doc.font(p.bold ? "bold" : "body");
+      doc.font(p.font).fontSize(p.font === "mono" ? size * 0.92 : size);
       const continued = i < segs.length - 1;
       if (i === 0) doc.text(p.s, x, undefined, { lineGap: 3, ...rest, continued });
       else doc.text(p.s, { continued });

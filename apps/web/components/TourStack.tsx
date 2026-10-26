@@ -13,11 +13,14 @@ const STAGGER_MS = 140;
 export function TourStack({
   data,
   progress,
+  quiet = false,
   selectedCity,
   onSelectCity,
 }: {
   data: RunPayload;
   progress: Progress;
+  /** The run stage is showing: it carries the one status line, so the rail drops its own log. */
+  quiet?: boolean;
   selectedCity: string | null;
   onSelectCity: (city: string) => void;
 }) {
@@ -56,7 +59,12 @@ export function TourStack({
             const state: CityState = painted ? progress.cities[city] ?? "queued" : "queued";
             const current = city === selectedCity;
             // While the agent is working (or replaying), only what has arrived so far.
-            const marks = run.status === "done" ? topLocal(data.cells, data.brands, city) : (progress.cityBrands[city] ?? []).slice(0, 2);
+            const marks =
+              run.status === "done"
+                ? topLocal(data.cells, data.brands, city)
+                : state === "queued"
+                  ? []
+                  : (progress.cityBrands[city] ?? []).slice(0, 2);
             return (
               <li key={city} className="shrink-0">
                 <button
@@ -92,14 +100,14 @@ export function TourStack({
         </ol>
       </nav>
 
-      <RunLog
+      {!quiet && <RunLog
         progress={progress}
         live={live}
         printed={printedCount}
         total={run.cities.length}
         seconds={run.usage ? run.usage.elapsedMs / 1000 : null}
         lookups={Math.max(progress.lookups, run.usage ? run.usage.qloo.calls + run.usage.qloo.cached : 0)}
-      />
+      />}
     </aside>
   );
 }

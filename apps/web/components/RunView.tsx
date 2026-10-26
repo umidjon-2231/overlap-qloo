@@ -66,9 +66,21 @@ export function RunView({ runId }: { runId: string }) {
     setReplayCount(null);
   }, []);
   useEffect(() => stopReplay, [stopReplay]);
+  // Where the tour bus is and has been: the stage's clock. A city prints only once the bus has
+  // been there and the agent has finished it, so the stage, the rail and the counter never run ahead.
+  const [busAt, setBusAt] = useState<string | null>(null);
+  const [busVisited, setBusVisited] = useState<string[]>([]);
+  const onArrive = useCallback((c: string) => {
+    setBusAt(c);
+    setBusVisited((v) => (v.includes(c) ? v : [...v, c]));
+  }, []);
+  const onLeave = useCallback(() => setBusAt(null), []);
+
   const startReplay = useCallback(() => {
     if (events.length === 0) return;
     stopReplay();
+    setBusAt(null);
+    setBusVisited([]);
     const t0 = Date.parse(events[0]!.at);
     const total = Date.parse(events.at(-1)!.at) - t0;
     const scale = total > 0 ? Math.min(1, 24_000 / total) : 0;
@@ -145,6 +157,13 @@ export function RunView({ runId }: { runId: string }) {
   const view = replaying ? { ...data, run } : data;
   const hasResults = data.brands.length > 0 && !staging;
   const stageDone = data.run.status === "done" && (!replaying || (replayCount ?? 0) >= events.length);
+  const stageStates = Object.fromEntries(
+    run.cities.map((c) => [
+      c,
+      c === busAt ? "working" : busVisited.includes(c) ? (progress.cities[c] === "printed" ? "printed" : "working") : "queued",
+    ]),
+  ) as typeof progress.cities;
+  const shown = staging ? { ...progress, cities: stageStates } : progress;
 
   const openPitch = (id: string) => {
     setPitchBrand(id);
@@ -158,7 +177,7 @@ export function RunView({ runId }: { runId: string }) {
   return (
     <ProvenanceProvider>
       <main className="flex flex-1 flex-col lg:flex-row">
-        <TourStack data={view} progress={progress} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+        <TourStack data={view} progress={shown} quiet={staging} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
 
         <div className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
           <header className="max-w-[72rem]">
@@ -195,7 +214,20 @@ export function RunView({ runId }: { runId: string }) {
             </div>
           )}
 
-          {staging && <Discoveries progress={progress} cities={run.cities} done={stageDone} replaying={replaying} onFinished={finishStage} />}
+          {staging && (
+            <Discoveries
+              progress={progress}
+              states={stageStates}
+              cities={run.cities}
+              done={stageDone}
+              replaying={replaying}
+              onFinished={finishStage}
+              here={busAt}
+              visited={busVisited}
+              onArrive={onArrive}
+              onLeave={onLeave}
+            />
+          )}
 
           {run.summary && !staging && <Summary text={run.summary} />}
 
