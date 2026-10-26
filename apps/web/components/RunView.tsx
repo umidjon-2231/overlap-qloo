@@ -75,9 +75,22 @@ export function RunView({ runId }: { runId: string }) {
     setReplayCount(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
     events.forEach((e, i) => timers.current.push(window.setTimeout(() => setReplayCount(i + 1), 700 + (Date.parse(e.at) - t0) * scale)));
-    timers.current.push(window.setTimeout(stopReplay, 700 + total * scale + 2500));
+    // The stage ends the replay once the bus has finished the route; this is only a safety net.
+    timers.current.push(window.setTimeout(stopReplay, 700 + total * scale + 45_000));
   };
   const replaying = replayCount !== null;
+
+  // A run watched live keeps its stage until the bus finishes the route, then the results open.
+  const [watching, setWatching] = useState(false);
+  const status = data?.run.status;
+  useEffect(() => {
+    if (status === "running") setWatching(true);
+    if (status === "error" || status === "needs_input") setWatching(false);
+  }, [status]);
+  const finishStage = useCallback(() => {
+    setWatching(false);
+    stopReplay();
+  }, [stopReplay]);
 
   const progress = useMemo(() => {
     if (!data) return null;
@@ -106,11 +119,11 @@ export function RunView({ runId }: { runId: string }) {
     );
   }
 
+  const staging = replaying || (watching && (data.run.status === "running" || data.run.status === "done"));
   const run = replaying ? { ...data.run, status: "running" as const } : data.run;
   const view = replaying ? { ...data, run } : data;
-  const live = run.status === "running";
-  const hasResults = data.brands.length > 0 && !replaying;
-  const latest = progress.lines.at(-1);
+  const hasResults = data.brands.length > 0 && !staging;
+  const stageDone = data.run.status === "done" && (!replaying || (replayCount ?? 0) >= events.length);
 
   const openPitch = (id: string) => {
     setPitchBrand(id);
@@ -130,7 +143,7 @@ export function RunView({ runId }: { runId: string }) {
           <header className="max-w-[72rem]">
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
               <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
-              {data.run.status === "done" && !replaying && events.length > 0 && (
+              {data.run.status === "done" && !staging && events.length > 0 && (
                 <Button variant="secondary" onClick={startReplay}>
                   Watch it work
                 </Button>
@@ -147,12 +160,6 @@ export function RunView({ runId }: { runId: string }) {
                 </>
               )}
             </p>
-            {live && latest && (
-              <p className="mt-3 flex items-center gap-2 text-sm lg:hidden" aria-live="polite">
-                <span className="live-dot size-1.5 rounded-full bg-coral" aria-hidden="true" />
-                {latest.text}
-              </p>
-            )}
           </header>
 
           {run.status === "needs_input" && run.pendingInput && <EntityPicker runId={run.id} input={run.pendingInput} onDone={refresh} />}
@@ -167,9 +174,9 @@ export function RunView({ runId }: { runId: string }) {
             </div>
           )}
 
-          {live && !hasResults && <Discoveries progress={progress} total={run.cities.length} replaying={replaying} onSkip={stopReplay} />}
+          {staging && <Discoveries progress={progress} cities={run.cities} done={stageDone} replaying={replaying} onFinished={finishStage} />}
 
-          {run.summary && !replaying && <Summary text={run.summary} />}
+          {run.summary && !staging && <Summary text={run.summary} />}
 
           {hasResults && (
             <>
@@ -190,7 +197,7 @@ export function RunView({ runId }: { runId: string }) {
                 ))}
               </div>
               <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-6">
-                {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} />}
+                {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} onChanged={refresh} />}
                 {tab === "grid" && <CityGrid data={data} onCity={openCity} />}
                 {tab === "cities" && city && <CityDetail data={data} city={city} onCity={setCity} />}
                 {tab === "pitch" && <PitchPackPanel data={data} brandId={pitchBrand} onBrandChange={setPitchBrand} onChanged={refresh} />}

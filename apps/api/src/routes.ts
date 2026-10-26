@@ -8,6 +8,7 @@ import { defaultConfig, resolveInput, startRun, type AgentConfig } from "./agent
 import { db } from "./db/client.js";
 import { env } from "./env.js";
 import { activations, brandMatches, cityCells, cityProfiles, pitchPacks, runs, toolCalls } from "./db/schema.js";
+import { llmOnlyBaseline } from "./agent/baseline.js";
 import { draftPitch } from "./pitch/draft.js";
 import { renderPitchPdf } from "./pitch/pdf.js";
 import { presets } from "./presets.js";
@@ -195,6 +196,17 @@ api.post("/runs/:id/resolve", async (c) => {
   }
 });
 
+api.post("/runs/:id/llm-only", async (c) => {
+  try {
+    const out = await llmOnlyBaseline(c.req.param("id"));
+    if (!out) return c.json({ error: "Run not found" }, 404);
+    return c.json(out);
+  } catch (e) {
+    console.error("llm-only failed:", e);
+    return c.json({ error: e instanceof Error ? e.message : "LLM-only comparison failed" }, 502);
+  }
+});
+
 api.post("/runs/:id/pitch/:brandId", async (c) => {
   try {
     const out = await draftPitch(c.req.param("id"), c.req.param("brandId"));
@@ -242,7 +254,7 @@ api.get("/runs/:id/pitch/:brandId/pdf", async (c) => {
     .where(and(eq(brandMatches.runId, runId), eq(brandMatches.brandEntityId, brandId)));
   const [run] = await db.select({ name: runs.propertyName }).from(runs).where(eq(runs.id, runId));
   const title = `${run?.name ?? "Overlap"} × ${brand?.name ?? "Brand"}`;
-  const pdf = await renderPitchPdf(title, pitch.bodyMd);
+  const pdf = await renderPitchPdf(title, pitch.bodyMd, pitch.approvedAt);
   const filename = `${title.replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}.pdf`;
   return c.body(new Uint8Array(pdf), 200, {
     "content-type": "application/pdf",

@@ -80,7 +80,7 @@ export function TourStack({
                             {m.name} <span className="font-mono tnum">#{m.rank}</span>
                           </span>
                         ))
-                      : state === "printed"
+                      : run.status === "done"
                         ? "national fit"
                         : ""}
                   </span>

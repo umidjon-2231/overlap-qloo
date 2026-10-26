@@ -36,6 +36,8 @@ export const runs = pgTable("runs", {
   usage: jsonb("usage"),
   /** Report items checked against logged Qloo calls. */
   grounding: jsonb("grounding"),
+  /** LLM-only baseline: the same model's brand picks with no Qloo data, for the comparison toggle. */
+  llmOnly: jsonb("llm_only"),
   error: text("error"),
   createdAt: createdAt(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

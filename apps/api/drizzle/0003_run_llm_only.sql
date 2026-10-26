@@ -1,0 +1,1 @@
+ALTER TABLE "runs" ADD COLUMN "llm_only" jsonb;

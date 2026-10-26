@@ -43,8 +43,17 @@ export interface Run {
   summary: string | null;
   usage: Usage | null;
   grounding: { checked: number; violations: { kind: string; id: string; callId: number }[] } | null;
+  llmOnly: LlmOnly | null;
   error: string | null;
   createdAt: string;
+}
+
+/** The same model's picks with no Qloo data, matched against the Qloo shortlist. */
+export interface LlmOnly {
+  model: string;
+  createdAt: string;
+  picks: { name: string; category: string; why: string; onShortlist: number | null }[];
+  missed: { rank: number; name: string; affinity: number | null }[];
 }
 
 export interface BrandQloo {
@@ -181,6 +190,7 @@ export const api = {
     request<{ runId: string; cached: boolean }>("/runs", { method: "POST", body: JSON.stringify(input) }),
   resolve: (id: string, entityId: string, name: string) =>
     request<{ ok: true }>(`/runs/${id}/resolve`, { method: "POST", body: JSON.stringify({ entityId, name }) }),
+  llmOnly: (id: string) => request<LlmOnly>(`/runs/${id}/llm-only`, { method: "POST" }),
   draftPitch: (id: string, brandId: string) =>
     request<{ bodyMd: string }>(`/runs/${id}/pitch/${brandId}`, { method: "POST" }),
   savePitch: (id: string, brandId: string, bodyMd: string) =>

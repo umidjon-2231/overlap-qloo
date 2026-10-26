@@ -34,6 +34,10 @@ export interface Progress {
   brands: FoundBrand[];
   brandsScanned: number;
   notes: CityNote[];
+  /** Cities in the order the agent first worked on each one (city-specific steps only). */
+  visitOrder: string[];
+  /** Shortlisted brands that rank in each city's local top list, best first. */
+  cityBrands: Record<string, { name: string; rank: number }[]>;
 }
 
 interface Point {
@@ -95,6 +99,8 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
   const brands = new Map<string, FoundBrand>();
   let brandsScanned = 0;
   const notes: CityNote[] = [];
+  const visitOrder: string[] = [];
+  const cityBrands: Record<string, { name: string; rank: number }[]> = {};
 
   const matchCity = (name: unknown) => runCities.find((c) => c.toLowerCase() === String(name ?? "").toLowerCase());
   const push = (key: string, text: string): LogLine => {
@@ -136,6 +142,7 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
       else if (name === "submit_report") text = "Checking every number against Qloo";
 
       for (const c of touched) if (cities[c] !== "printed") cities[c] = "working";
+      if (name !== "city_fit") for (const c of touched) if (!visitOrder.includes(c)) visitOrder.push(c);
       open.set(String(p.id), { cities: touched, line: push(String(p.id), text) });
     } else if (e.type === "tool_end") {
       const id = String(p.id);
@@ -159,6 +166,7 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
         for (const c of p.data as { city: string; cells?: { name?: string; inLocalTop: boolean; localRank?: number }[] }[]) {
           const city = matchCity(c.city);
           const top = (c.cells ?? []).filter((x) => x.inLocalTop && x.name).sort((a, b) => a.localRank! - b.localRank!);
+          if (city) cityBrands[city] = top.map((x) => ({ name: x.name!, rank: x.localRank! }));
           if (city && top.length)
             notes.push({
               key: `rank-${id}-${city}`,
@@ -195,6 +203,15 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
   }
 
   if (finished) for (const l of lines) l.done = true;
+  // Between the last lookup and the report the agent is writing; say so rather than freeze on a finished step.
+  else if (
+    status === "running" &&
+    open.size === 0 &&
+    lines.every((l) => l.done) &&
+    runCities.length > 0 &&
+    runCities.every((c) => cities[c] === "printed")
+  )
+    lines.push({ key: "writing", text: "Writing up the shortlist", done: false });
   return {
     cities,
     lines,
@@ -202,5 +219,7 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
     brands: [...brands.values()].sort((a, b) => b.affinity - a.affinity),
     brandsScanned,
     notes,
+    visitOrder,
+    cityBrands,
   };
 }

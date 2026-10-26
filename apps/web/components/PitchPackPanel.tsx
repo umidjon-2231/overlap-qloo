@@ -3,6 +3,7 @@
 import { marked } from "marked";
 import { useEffect, useMemo, useState } from "react";
 import { api, type RunPayload } from "@/lib/api";
+import { PressLoop } from "./PressLoop";
 import { Button, buttonClass, SectionTitle } from "./ui";
 
 // Raw HTML in model output or seller edits is dropped, never rendered.
@@ -89,7 +90,18 @@ export function PitchPackPanel({
         <div className="min-w-0">
           {!brand && <p className="text-ink-soft">Pick a brand to draft its pitch pack.</p>}
 
-          {brand && !saved && (
+          {brand && busy === "draft" && (
+            <div className="max-w-xl" aria-live="polite">
+              <PressLoop className="max-w-[26rem]" />
+              <p className="mt-3 flex items-center gap-2.5 text-lg font-semibold">
+                <span className="live-dot size-2 rounded-full bg-coral" aria-hidden="true" />
+                Printing the {brand.brandName} pitch pack
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">Written from this run&apos;s Qloo evidence. Usually about 30 seconds.</p>
+            </div>
+          )}
+
+          {brand && !saved && busy !== "draft" && (
             <div className="max-w-xl border-t-2 border-ink pt-5">
               <h3 className="display-wide text-[1.6rem]">{brand.brandName}</h3>
               <p className="mt-2 leading-relaxed text-ink-soft">
@@ -97,12 +109,12 @@ export function PitchPackPanel({
                 review and edit it, then approve before anything can be exported.
               </p>
               <Button className="mt-5" disabled={busy !== null} onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}>
-                {busy === "draft" ? "Writing the pitch… about 20 s" : "Draft pitch pack"}
+                Draft pitch pack
               </Button>
             </div>
           )}
 
-          {brand && saved && (
+          {brand && saved && busy !== "draft" && (
             <>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-ink pb-3">
                 <div role="tablist" aria-label="Pitch pack view" className="flex gap-1">
@@ -130,7 +142,7 @@ export function PitchPackPanel({
                   disabled={busy !== null}
                   onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
                 >
-                  {busy === "draft" ? "Rewriting… about 20 s" : "Rewrite draft"}
+                  Rewrite draft
                 </button>
               </div>
 
@@ -155,9 +167,18 @@ export function PitchPackPanel({
                     {busy === "save" ? "Saving…" : "Save edits"}
                   </Button>
                 )}
-                <Button disabled={busy !== null || dirty || approved} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
-                  {approved ? "Approved" : busy === "approve" ? "Approving…" : "Approve pitch pack"}
-                </Button>
+                {approved ? (
+                  <span className="inline-flex items-center gap-2 px-1 py-2 text-sm font-semibold text-ok">
+                    <svg viewBox="0 0 12 12" className="size-3.5" aria-hidden="true">
+                      <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" />
+                    </svg>
+                    Approved: ready to export
+                  </span>
+                ) : (
+                  <Button disabled={busy !== null || dirty} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
+                    {busy === "approve" ? "Approving…" : "Approve pitch pack"}
+                  </Button>
+                )}
                 <span className="mx-2 hidden h-6 w-px bg-rule sm:block" aria-hidden="true" />
                 <Button
                   variant="secondary"
@@ -177,7 +198,9 @@ export function PitchPackPanel({
                   Open email draft
                 </a>
               </div>
-              {!approved && <p className="mt-2 text-xs text-ink-soft">Export unlocks after you approve.</p>}
+              <p className="mt-2 text-xs text-ink-soft">
+                {approved ? "The PDF and email draft leave out your internal seller notes." : "Export unlocks after you approve."}
+              </p>
             </>
           )}
 

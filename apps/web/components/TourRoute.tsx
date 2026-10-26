@@ -1,0 +1,307 @@
+"use client";
+
+import { Line, OrthographicCamera, useGLTF } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import type { CityState } from "@/lib/progress";
+
+/* The run as a tour: the seller's cities become stops on a printed route, and the Overlap tour bus
+   drives to each city as the agent starts on it. A city prints in when its evidence is read, and the
+   brands that rank there pop up as tags. Flat brand inks, unlit, with ink outlines. */
+
+const INK = "#111216";
+const PAPER = "#f3f3f1";
+const CORAL = "#ff5a36";
+const SPACING = 3.6;
+const DRIVE_SPEED = 3.2; // world units per second
+const DWELL_S = 1.6;
+const BUS_URL = "/models/tour-bus.glb";
+
+export interface TourRouteProps {
+  cities: string[];
+  states: Record<string, CityState>;
+  visitOrder: string[];
+  cityBrands: Record<string, { name: string; rank: number }[]>;
+  /** The run (or replay) has finished: visit any remaining cities, pull back, then call onFinished. */
+  done: boolean;
+  onFinished?: () => void;
+}
+
+function useLayout(cities: string[]) {
+  return useMemo(() => {
+    const stops = cities.map((_, i) => new THREE.Vector3(i * SPACING, 0, Math.sin(i * 1.3 + 0.4) * 1.5));
+    const first = stops[0] ?? new THREE.Vector3();
+    const last = stops.at(-1) ?? new THREE.Vector3();
+    const points = [first.clone().add(new THREE.Vector3(-3.2, 0, 0.8)), ...stops, last.clone().add(new THREE.Vector3(2.8, 0, -0.6))];
+    const curve = new THREE.CatmullRomCurve3(points, false, "centripetal");
+    const samples = curve.getSpacedPoints(600);
+    // Arc-length position (0..1) of each stop on the road.
+    const stopU = stops.map((p) => {
+      let best = 0;
+      let bestD = Infinity;
+      samples.forEach((s, i) => {
+        const d = s.distanceToSquared(p);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      });
+      return best / (samples.length - 1);
+    });
+    return { stops, curve, samples, stopU, length: curve.getLength() };
+  }, [cities]);
+}
+
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** DOM labels live outside the canvas; the scene projects their anchors to screen space every frame. */
+type Anchors = Map<string, HTMLElement>;
+
+export function TourRoute(props: TourRouteProps) {
+  const anchors = useRef<Anchors>(new Map());
+  const [here, setHere] = useState<string | null>(null);
+  const [visited, setVisited] = useState<string[]>([]);
+  const bind = (key: string) => (el: HTMLElement | null) => {
+    if (el) anchors.current.set(key, el);
+    else anchors.current.delete(key);
+  };
+  return (
+    <div className="relative h-[19rem] w-full overflow-hidden sm:h-[24rem]">
+      <Canvas flat dpr={[1, 2]} gl={{ antialias: true, alpha: true }} aria-hidden="true">
+        <Scene {...props} anchors={anchors} here={here} setHere={setHere} visited={visited} setVisited={setVisited} />
+      </Canvas>
+      <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+        {props.cities.map((city) => {
+          const tags = visited.includes(city) ? (props.cityBrands[city] ?? []).slice(0, here === city ? 2 : 1) : [];
+          return (
+            <div key={city}>
+              <span ref={bind(`label:${city}`)} className="absolute left-0 top-0 opacity-0 will-change-transform">
+                <span className="display print-line on-paper block -translate-x-1/2 whitespace-nowrap text-[1.35rem] sm:text-[1.6rem]" data-state={props.states[city] ?? "queued"}>
+                  {city}
+                  <span className="ink">{city}</span>
+                </span>
+              </span>
+              <span ref={bind(`tag:${city}`)} className="absolute left-0 top-0 opacity-0 will-change-transform">
+                <span className="flex -translate-x-1/2 -translate-y-full flex-col items-center gap-1">
+                  {tags.map((b) => (
+                    <span key={b.name} className="tag-pop whitespace-nowrap rounded-[2px] border border-ink bg-sheet px-2 py-0.5 text-xs font-semibold text-ink">
+                      {b.name} <span className="font-mono text-evidence tnum">#{b.rank}</span>
+                    </span>
+                  ))}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Scene({
+  cities,
+  states,
+  visitOrder,
+  done,
+  onFinished,
+  anchors,
+  here,
+  setHere,
+  setVisited,
+}: TourRouteProps & {
+  anchors: React.RefObject<Anchors>;
+  here: string | null;
+  setHere: (c: string | null) => void;
+  visited: string[];
+  setVisited: React.Dispatch<React.SetStateAction<string[]>>;
+}) {
+  const layout = useLayout(cities);
+  const { size } = useThree();
+  const camRef = useRef<THREE.OrthographicCamera>(null);
+  const busRef = useRef<THREE.Group>(null);
+  const focus = useRef(new THREE.Vector3(layout.stops[0]?.x ?? 0, 0, 0));
+  const nav = useRef({ u: 0, stop: 0, dwell: 0, heading: 1, finishedAt: -1, wheel: 0 });
+  const [overview, setOverview] = useState(false);
+  const scratch = useMemo(() => new THREE.Vector3(), []);
+  const still = useMemo(reducedMotion, []);
+
+  // Every city gets a visit: the agent's own order first, the rest once the run is done.
+  const queue = useMemo(() => {
+    const q = visitOrder.filter((c) => cities.includes(c));
+    if (done) for (const c of cities) if (!q.includes(c)) q.push(c);
+    return q;
+  }, [visitOrder, cities, done]);
+
+  const offset = useMemo(() => new THREE.Vector3(6, 11, 12), []);
+  const followZoom = size.width / (SPACING * (size.width < 640 ? 2.2 : 3.4));
+  const fitZoom = Math.min(followZoom, size.width / (layout.length * 0.86 + 4));
+
+  useFrame((state, dt) => {
+    const n = nav.current;
+    const step = Math.min(dt, 0.05);
+    const goal = queue[n.stop];
+    if (goal) {
+      const goalU = layout.stopU[cities.indexOf(goal)] ?? 0;
+      const delta = goalU - n.u;
+      const move = (DRIVE_SPEED * step) / layout.length;
+      if (still) n.u = goalU;
+      if (Math.abs(delta) > move) {
+        n.u += Math.sign(delta) * move;
+        n.heading = Math.sign(delta);
+        n.wheel += Math.sign(delta) * DRIVE_SPEED * step * 6;
+        if (here) setHere(null);
+      } else {
+        n.u = goalU;
+        if (here !== goal) {
+          setHere(goal);
+          setVisited((v) => (v.includes(goal) ? v : [...v, goal]));
+          n.dwell = 0;
+        }
+        n.dwell += step;
+        // Move on once the dwell is over and the next stop is known.
+        if (n.dwell > DWELL_S && queue[n.stop + 1]) n.stop += 1;
+        else if (n.dwell > DWELL_S && done && n.stop === queue.length - 1 && n.finishedAt < 0) {
+          n.finishedAt = state.clock.elapsedTime;
+          setOverview(true);
+          setHere(null);
+        }
+      }
+    }
+    if (n.finishedAt > 0 && state.clock.elapsedTime - n.finishedAt > 2.2) {
+      n.finishedAt = Infinity;
+      onFinished?.();
+    }
+
+    const bus = busRef.current;
+    if (bus) {
+      const p = layout.curve.getPointAt(n.u);
+      const t = layout.curve.getTangentAt(n.u).multiplyScalar(n.heading);
+      bus.position.set(p.x, 0, p.z);
+      const target = Math.atan2(-t.z, t.x);
+      bus.rotation.y += (shortAngle(target - bus.rotation.y) * (still ? 1 : 1 - Math.exp(-step * 8)));
+      bus.position.y = here ? 0 : Math.abs(Math.sin(state.clock.elapsedTime * 14)) * 0.025;
+      bus.traverse((o) => {
+        if (o.name.startsWith("Wheel_")) o.rotation.z = -n.wheel;
+      });
+    }
+
+    const cam = camRef.current;
+    if (cam) {
+      const want = overview
+        ? new THREE.Vector3((layout.stops[0]!.x + layout.stops.at(-1)!.x) / 2, 0, 0)
+        : bus
+          ? bus.position.clone().setY(0)
+          : focus.current;
+      focus.current.lerp(want, still ? 1 : 1 - Math.exp(-step * 2.4));
+      cam.position.copy(focus.current).add(offset);
+      cam.lookAt(focus.current);
+      const z = overview ? fitZoom : followZoom;
+      cam.zoom += (z - cam.zoom) * (still ? 1 : 1 - Math.exp(-step * 2));
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld();
+
+      // Place the DOM labels: city names just in front of each stop, brand tags above it.
+      const place = (key: string, p: THREE.Vector3) => {
+        const el = anchors.current?.get(key);
+        if (!el) return;
+        scratch.copy(p).project(cam);
+        const x = ((scratch.x + 1) / 2) * size.width;
+        const y = ((1 - scratch.y) / 2) * size.height;
+        el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+        el.style.opacity = "1";
+      };
+      cities.forEach((city, i) => {
+        const s = layout.stops[i]!;
+        place(`label:${city}`, new THREE.Vector3(s.x, 0, s.z + 0.95));
+        place(`tag:${city}`, new THREE.Vector3(s.x, 0.9, s.z - 0.2));
+      });
+    }
+  });
+
+  return (
+    <>
+      <OrthographicCamera ref={camRef} makeDefault zoom={followZoom} near={-100} far={200} position={[6, 11, 12]} />
+      <Road samples={layout.samples} />
+      {cities.map((city, i) => (
+        <Stop key={city} position={layout.stops[i]!} state={states[city] ?? "queued"} here={here === city} still={still} />
+      ))}
+      <Suspense fallback={null}>
+        <group ref={busRef}>
+          <Bus />
+        </group>
+      </Suspense>
+    </>
+  );
+}
+
+function shortAngle(a: number) {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
+
+function Road({ samples }: { samples: THREE.Vector3[] }) {
+  const pts = useMemo(() => samples.map((p) => [p.x, -0.02, p.z] as [number, number, number]), [samples]);
+  return (
+    <>
+      <Line points={pts} color={INK} lineWidth={18} />
+      <Line points={pts} color={PAPER} lineWidth={1.6} dashed dashSize={0.32} gapSize={0.28} position={[0, 0.005, 0]} />
+    </>
+  );
+}
+
+function Stop({ position, state, here, still }: { position: THREE.Vector3; state: CityState; here: boolean; still: boolean }) {
+  const ring = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const r = ring.current;
+    if (!r) return;
+    r.visible = here && !still;
+    const k = (clock.elapsedTime * 0.9) % 1;
+    r.scale.setScalar(1 + k * 1.3);
+    (r.material as THREE.MeshBasicMaterial).opacity = 1 - k;
+  });
+  const printed = state === "printed";
+  return (
+    <group position={position}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <circleGeometry args={[0.62, 40]} />
+        <meshBasicMaterial color={printed ? INK : PAPER} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
+        <ringGeometry args={[0.56, 0.64, 40]} />
+        <meshBasicMaterial color={here ? CORAL : INK} />
+      </mesh>
+      <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
+        <ringGeometry args={[0.6, 0.66, 48]} />
+        <meshBasicMaterial color={CORAL} transparent />
+      </mesh>
+    </group>
+  );
+}
+
+function Bus() {
+  const { scene } = useGLTF(BUS_URL);
+  const model = useMemo(() => {
+    const root = scene.clone(true);
+    const edges = new THREE.LineBasicMaterial({ color: INK });
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const src = mesh.material as THREE.MeshStandardMaterial;
+      // Unlit flat ink: the brand colours exactly, no shading.
+      mesh.material = new THREE.MeshBasicMaterial({
+        color: src.color,
+        map: src.map ?? null,
+        transparent: src.transparent,
+        alphaTest: src.map ? 0.5 : 0,
+        side: THREE.DoubleSide,
+      });
+      if (!src.map) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 28), edges));
+    });
+    root.scale.setScalar(0.62);
+    return root;
+  }, [scene]);
+  useEffect(() => () => model.traverse((o) => (o as THREE.Mesh).geometry?.dispose?.()), [model]);
+  return <primitive object={model} />;
+}
+
+useGLTF.preload(BUS_URL);

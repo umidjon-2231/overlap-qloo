@@ -2,7 +2,7 @@
 
 import { BRAND_CATEGORIES, isSensitiveTag, type BrandCategory } from "@overlap/shared";
 import { useState } from "react";
-import type { BrandMatch, CityCell, CityProfile, HeatCell, Partner, RunPayload } from "@/lib/api";
+import { api, type BrandMatch, type CityCell, type CityProfile, type HeatCell, type Partner, type RunPayload } from "@/lib/api";
 import { CallLink } from "./Provenance";
 import { AgentLabel, Button, CoverageBadge, CoverageMark, QlooLabel, SectionTitle, fmt } from "./ui";
 
@@ -10,10 +10,49 @@ const categoryLabel = (c: string | null) => (c && c in BRAND_CATEGORIES ? BRAND_
 
 /* ---------------- Shortlist: a ranked bill, top pick on a coral field ---------------- */
 
-export function Shortlist({ data, onPitch, onCity }: { data: RunPayload; onPitch: (brandId: string) => void; onCity: (city: string) => void }) {
+export function Shortlist({
+  data,
+  onPitch,
+  onCity,
+  onChanged,
+}: {
+  data: RunPayload;
+  onPitch: (brandId: string) => void;
+  onCity: (city: string) => void;
+  onChanged: () => void;
+}) {
+  const [mode, setMode] = useState<"qloo" | "llm">("qloo");
+  const toggle = (
+    <div role="radiogroup" aria-label="Source" className="inline-flex border border-ink">
+      {(
+        [
+          ["qloo", "Qloo-grounded"],
+          ["llm", "LLM only"],
+        ] as const
+      ).map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={mode === id}
+          onClick={() => setMode(id)}
+          className="px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-paper-2 aria-checked:bg-ink aria-checked:text-on-ink"
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  if (mode === "llm")
+    return (
+      <section>
+        <SectionTitle title="Brands to pitch" hint="The same model, asked without any Qloo data" action={toggle} />
+        <LlmOnlyView data={data} onChanged={onChanged} />
+      </section>
+    );
   return (
     <section>
-      <SectionTitle title="Brands to pitch" hint="Ranked by Qloo audience affinity with the artist's fans" />
+      <SectionTitle title="Brands to pitch" hint="Ranked by Qloo audience affinity with the artist's fans" action={toggle} />
       <ol className="border-b border-ink">
         {data.brands.map((b, i) => (
           <BrandRow
@@ -124,6 +163,103 @@ function BrandRow({
         <span className={`text-xs ${top ? "text-ink" : "text-ink-soft"}`}>overlap score</span>
       </div>
     </li>
+  );
+}
+
+/* ---------------- LLM-only comparison ---------------- */
+
+function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const result = data.run.llmOnly;
+
+  if (!result)
+    return (
+      <div className="max-w-[65ch]">
+        <p className="leading-relaxed">
+          What would a language model pitch on its own? Overlap asks the same model the same question with no Qloo data, so you can see which picks
+          the taste graph backs up and what the model misses.
+        </p>
+        <Button
+          className="mt-4"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api.llmOnly(data.run.id);
+              onChanged();
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Asking the model… about 10 s" : "Ask the model without Qloo"}
+        </Button>
+        {error && <p className="mt-3 text-sm text-coral-ink">{error}</p>}
+      </div>
+    );
+
+  const backed = result.picks.filter((p) => p.onShortlist != null).length;
+  return (
+    <div>
+      <p className="max-w-[72ch] text-[1.05rem] leading-relaxed">
+        Without Qloo, the model named <b>{result.picks.length} brands</b>. <b className="text-evidence">{backed}</b> of them are on Overlap&apos;s
+        Qloo-grounded shortlist; the rest have no audience evidence behind them here.
+        {result.missed.length > 0 && (
+          <>
+            {" "}
+            It missed <b>{result.missed.length}</b> brands Qloo ranks highly for these fans.
+          </>
+        )}
+      </p>
+
+      <div className="mt-6 grid gap-x-12 gap-y-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div>
+          <h3 className="display border-b-2 border-ink pb-2 text-[1.5rem]">The model&apos;s picks</h3>
+          <ol>
+            {result.picks.map((p, i) => (
+              <li key={`${p.name}-${i}`} className="grid grid-cols-[1.75rem_1fr_auto] gap-x-3 border-b border-rule py-3">
+                <span className="font-mono text-sm text-ink-soft tnum">{i + 1}</span>
+                <span className="min-w-0">
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="ml-2 text-xs text-ink-soft">{p.category}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-ink-soft">{p.why}</span>
+                </span>
+                {p.onShortlist != null ? (
+                  <span className="self-start whitespace-nowrap bg-evidence-soft px-1.5 py-0.5 font-mono text-[11px] text-evidence tnum">Qloo #{p.onShortlist}</span>
+                ) : (
+                  <span className="self-start whitespace-nowrap text-xs text-ink-soft">No Qloo evidence</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div>
+          <h3 className="display border-b-2 border-ink pb-2 text-[1.5rem]">Qloo found, the model missed</h3>
+          {result.missed.length === 0 ? (
+            <p className="py-3 text-sm text-ink-soft">The model named every brand on the Qloo shortlist.</p>
+          ) : (
+            <ol>
+              {result.missed.slice(0, 8).map((m) => (
+                <li key={m.name} className="flex items-baseline justify-between gap-3 border-b border-rule py-2.5">
+                  <span>
+                    <span className="mr-2 font-mono text-sm text-ink-soft tnum">#{m.rank}</span>
+                    <span className="font-semibold">{m.name}</span>
+                  </span>
+                  <span className="font-mono text-sm text-evidence tnum">{fmt(m.affinity, 3)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+      <p className="mt-6 text-xs text-ink-soft">
+        Model: {result.model}, asked once with the tour, cities and categories only. Matching is by brand name.
+      </p>
+    </div>
   );
 }
 
