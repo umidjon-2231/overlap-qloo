@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { CityState } from "@/lib/progress";
+import { PressLoop } from "./PressLoop";
 
 /* The run as a tour: the seller's cities become stops on a printed route, and the Overlap tour bus
    drives to each city as the agent starts on it. A city prints in when its evidence is read, and the
@@ -58,7 +59,27 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("
 /** DOM labels live outside the canvas; the scene projects their anchors to screen space every frame. */
 type Anchors = Map<string, HTMLElement>;
 
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") ?? c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
 export function TourRoute(props: TourRouteProps) {
+  const [gl] = useState(hasWebGL);
+  if (!gl)
+    return (
+      <div className="flex h-[15rem] items-center justify-center sm:h-[24rem]">
+        <PressLoop className="max-w-[24rem]" />
+      </div>
+    );
+  return <TourRouteCanvas {...props} />;
+}
+
+function TourRouteCanvas(props: TourRouteProps) {
   const anchors = useRef<Anchors>(new Map());
   const [here, setHere] = useState<string | null>(null);
   const [visited, setVisited] = useState<string[]>([]);

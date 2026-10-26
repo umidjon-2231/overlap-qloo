@@ -11,7 +11,24 @@ pnpm db:migrate
 pnpm dev                 # web http://localhost:3000, api http://localhost:8787
 ```
 
-On the current dev machine the database is the existing `dev-postgres` container (`localhost:15432`, database `overlap`). Port 5433 there is an SSH tunnel, not Postgres.
+On the current dev machine the database is the `dev-postgres` container, which runs **on the server** under the rootless Docker daemon (Docker context `dev-host`, which is this machine's active context). It publishes `127.0.0.1:15432` on the server; reach it locally through an SSH tunnel:
+
+```bash
+ssh -N -L 15432:127.0.0.1:15432 dev-host      # keep running while you develop
+```
+
+If the server rebooted, start the container first: `docker --context dev-host start dev-postgres`. Local Docker Desktop is not used. Port 5433 is a different tunnel, not Postgres.
+
+Work is committed locally and verified on localhost; pushing to `main` deploys (see Production).
+
+### 3D and motion assets
+
+| Asset | Source | Rebuild |
+|---|---|---|
+| `apps/web/public/models/tour-bus.glb` | `brand/blender/tour_bus.py` | `blender -b -P brand/blender/tour_bus.py` |
+| `apps/web/public/motion/screenprint-loop.{webm,mp4}`, poster | `brand/blender/screenprint_loop.py` | `blender -b -P brand/blender/screenprint_loop.py -- <dir> --render --transparent`, then encode (see the script header) |
+
+Blender 5.2. The `.blend` files are not committed.
 
 ## Environment variables
 
