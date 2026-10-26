@@ -8,7 +8,7 @@ import type { Progress } from "@/lib/progress";
 
 const TourRoute = dynamic(() => import("./TourRoute").then((m) => m.TourRoute), {
   ssr: false,
-  loading: () => <div className="h-[19rem] sm:h-[24rem]" aria-hidden="true" />,
+  loading: () => <div className="h-[15rem] sm:h-[24rem]" aria-hidden="true" />,
 });
 
 export function Discoveries({

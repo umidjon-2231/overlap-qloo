@@ -66,7 +66,7 @@ export function RunView({ runId }: { runId: string }) {
     setReplayCount(null);
   }, []);
   useEffect(() => stopReplay, [stopReplay]);
-  const startReplay = () => {
+  const startReplay = useCallback(() => {
     if (events.length === 0) return;
     stopReplay();
     const t0 = Date.parse(events[0]!.at);
@@ -77,8 +77,28 @@ export function RunView({ runId }: { runId: string }) {
     events.forEach((e, i) => timers.current.push(window.setTimeout(() => setReplayCount(i + 1), 700 + (Date.parse(e.at) - t0) * scale)));
     // The stage ends the replay once the bus has finished the route; this is only a safety net.
     timers.current.push(window.setTimeout(stopReplay, 700 + total * scale + 45_000));
-  };
+  }, [events, stopReplay]);
   const replaying = replayCount !== null;
+
+  // Opened from a demo with ?watch=1: play the ride first, once the recorded events have arrived.
+  const [pendingWatch, setPendingWatch] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("watch") === "1") {
+      setPendingWatch(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+  useEffect(() => {
+    if (!pendingWatch || !data) return;
+    if (data.run.status !== "done") return setPendingWatch(false);
+    if (events.length === 0) return;
+    // Events stream in as a burst; start once it settles.
+    const t = window.setTimeout(() => {
+      setPendingWatch(false);
+      startReplay();
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [pendingWatch, data, events.length, startReplay]);
 
   // A run watched live keeps its stage until the bus finishes the route, then the results open.
   const [watching, setWatching] = useState(false);
@@ -89,6 +109,7 @@ export function RunView({ runId }: { runId: string }) {
   }, [status]);
   const finishStage = useCallback(() => {
     setWatching(false);
+    setPendingWatch(false);
     stopReplay();
   }, [stopReplay]);
 
@@ -119,7 +140,7 @@ export function RunView({ runId }: { runId: string }) {
     );
   }
 
-  const staging = replaying || (watching && (data.run.status === "running" || data.run.status === "done"));
+  const staging = replaying || pendingWatch || (watching && (data.run.status === "running" || data.run.status === "done"));
   const run = replaying ? { ...data.run, status: "running" as const } : data.run;
   const view = replaying ? { ...data, run } : data;
   const hasResults = data.brands.length > 0 && !staging;

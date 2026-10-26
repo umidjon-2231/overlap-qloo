@@ -55,7 +55,8 @@ export function TourStack({
           {run.cities.map((city, i) => {
             const state: CityState = painted ? progress.cities[city] ?? "queued" : "queued";
             const current = city === selectedCity;
-            const marks = topLocal(data.cells, data.brands, city);
+            // While the agent is working (or replaying), only what has arrived so far.
+            const marks = run.status === "done" ? topLocal(data.cells, data.brands, city) : (progress.cityBrands[city] ?? []).slice(0, 2);
             return (
               <li key={city} className="shrink-0">
                 <button

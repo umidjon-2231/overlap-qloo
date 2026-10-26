@@ -25,8 +25,9 @@ export function Home() {
     setBusy(key);
     setError(null);
     try {
-      const { runId } = await api.createRun(input);
-      router.push(`/run/${runId}`);
+      const { runId, cached } = await api.createRun(input);
+      // A ready-made demo result opens with the ride replayed first, so visitors see Overlap at work.
+      router.push(cached ? `/run/${runId}?watch=1` : `/run/${runId}`);
     } catch (e) {
       setError((e as Error).message);
       setBusy(null);

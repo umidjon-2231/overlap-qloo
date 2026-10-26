@@ -67,7 +67,7 @@ export function TourRoute(props: TourRouteProps) {
     else anchors.current.delete(key);
   };
   return (
-    <div className="relative h-[19rem] w-full overflow-hidden sm:h-[24rem]">
+    <div className="relative h-[15rem] w-full overflow-hidden sm:h-[24rem]">
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true, alpha: true }} aria-hidden="true">
         <Scene {...props} anchors={anchors} here={here} setHere={setHere} visited={visited} setVisited={setVisited} />
       </Canvas>
@@ -141,6 +141,16 @@ function Scene({
     const n = nav.current;
     const step = Math.min(dt, 0.05);
     const goal = queue[n.stop];
+    // Before the agent reaches any city, the bus heads out slowly toward the first stop.
+    if (!goal && !done && layout.stopU[0] != null) {
+      const preRoll = layout.stopU[0] * 0.85;
+      if (n.u < preRoll) {
+        const move = (DRIVE_SPEED * 0.35 * step) / layout.length;
+        n.u = Math.min(preRoll, n.u + move);
+        n.heading = 1;
+        n.wheel += DRIVE_SPEED * 0.35 * step * 6;
+      }
+    }
     if (goal) {
       const goalU = layout.stopU[cities.indexOf(goal)] ?? 0;
       const delta = goalU - n.u;
@@ -224,7 +234,10 @@ function Scene({
       <OrthographicCamera ref={camRef} makeDefault zoom={followZoom} near={-100} far={200} position={[6, 11, 12]} />
       <Road samples={layout.samples} />
       {cities.map((city, i) => (
-        <Stop key={city} position={layout.stops[i]!} state={states[city] ?? "queued"} here={here === city} still={still} />
+        <group key={city}>
+          <Stop position={layout.stops[i]!} state={states[city] ?? "queued"} here={here === city} still={still} />
+          <Skyline city={city} position={layout.stops[i]!} state={states[city] ?? "queued"} />
+        </group>
       ))}
       <Suspense fallback={null}>
         <group ref={busRef}>
@@ -274,6 +287,46 @@ function Stop({ position, state, here, still }: { position: THREE.Vector3; state
         <ringGeometry args={[0.6, 0.66, 48]} />
         <meshBasicMaterial color={CORAL} transparent />
       </mesh>
+    </group>
+  );
+}
+
+/** A few flat blocks behind each stop, shaped from the city's name so every city keeps its own skyline.
+    Outline only while queued, coral outline while the agent is there, solid ink once printed. */
+function Skyline({ city, position, state }: { city: string; position: THREE.Vector3; state: CityState }) {
+  const blocks = useMemo(() => {
+    let h = 2166136261;
+    for (const ch of city) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    const rand = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) % 1000) / 1000;
+    const count = 4 + Math.floor(rand() * 3);
+    return Array.from({ length: count }, (_, i) => {
+      const w = 0.28 + rand() * 0.22;
+      return { x: -0.95 + (i * 1.9) / (count - 1), h: 0.35 + rand() * 1.15, w, d: 0.3 + rand() * 0.25 };
+    });
+  }, [city]);
+  const geos = useMemo(() => blocks.map((b) => new THREE.BoxGeometry(b.w, b.h, b.d)), [blocks]);
+  const edges = useMemo(() => geos.map((g) => new THREE.EdgesGeometry(g)), [geos]);
+  useEffect(
+    () => () => {
+      geos.forEach((g) => g.dispose());
+      edges.forEach((g) => g.dispose());
+    },
+    [geos, edges],
+  );
+  const fill = state === "printed" ? INK : PAPER;
+  const line = state === "working" ? CORAL : state === "printed" ? PAPER : INK;
+  return (
+    <group position={[position.x, 0, position.z - 1.35]}>
+      {blocks.map((b, i) => (
+        <group key={i} position={[b.x, b.h / 2, (i % 2) * 0.22]}>
+          <mesh geometry={geos[i]}>
+            <meshBasicMaterial color={fill} />
+          </mesh>
+          <lineSegments geometry={edges[i]}>
+            <lineBasicMaterial color={line} />
+          </lineSegments>
+        </group>
+      ))}
     </group>
   );
 }
