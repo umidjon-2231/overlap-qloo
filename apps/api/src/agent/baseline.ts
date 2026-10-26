@@ -14,11 +14,11 @@ const pickSchema = z.object({
       z.object({
         name: z.string().min(1).describe("Brand name"),
         category: z.string().describe("One of the seller's categories"),
-        why: z.string().min(10).describe("One sentence on why this brand fits the artist's fans"),
+        why: z.string().describe("One sentence on why this brand fits the artist's fans"),
       }),
     )
-    .min(1)
-    .max(10),
+    // The model sometimes names a few more than asked; its first ten are kept rather than failing.
+    .min(1),
 });
 
 export type LlmOnlyPick = z.infer<typeof pickSchema>["brands"][number] & { onShortlist: number | null };
@@ -54,9 +54,9 @@ export async function llmOnlyBaseline(runId: string): Promise<LlmOnlyResult | nu
     description: "Submit the brands you would pitch.",
     input_schema: (({ $schema: _s, ...rest }) => rest)(z.toJSONSchema(pickSchema) as Record<string, unknown>) as { type: "object" },
   };
-  const message = await anthropic.messages.create({
+  const ask = () => anthropic.messages.create({
     model,
-    max_tokens: 2000,
+    max_tokens: 3000,
     system:
       "You are a sponsorship analyst at a live-music promoter. You have no audience data, only your own knowledge. " +
       "Pick the brands you would pitch first for this property, best first.",
@@ -72,12 +72,22 @@ export async function llmOnlyBaseline(runId: string): Promise<LlmOnlyResult | nu
       },
     ],
   });
-  const call = message.content.find((b) => b.type === "tool_use");
-  const parsed = pickSchema.safeParse(call?.type === "tool_use" ? call.input : null);
-  if (!parsed.success) throw new Error("The model did not return a brand list");
+  const parse = (m: Awaited<ReturnType<typeof ask>>) => {
+    const call = m.content.find((b) => b.type === "tool_use");
+    return pickSchema.safeParse(call?.type === "tool_use" ? call.input : null);
+  };
+  // One retry on a malformed answer; then report it.
+  let message = await ask();
+  let parsed = parse(message);
+  if (!parsed.success) {
+    console.error("llm-only: malformed answer, retrying:", parsed.error.message.slice(0, 300));
+    message = await ask();
+    parsed = parse(message);
+  }
+  if (!parsed.success) throw new Error("The model did not return a usable brand list. Try again.");
 
   const rankOf = new Map(ranked.map((b, i) => [norm(b.brandName), i + 1]));
-  const picks = parsed.data.brands.map((p) => ({ ...p, onShortlist: rankOf.get(norm(p.name)) ?? null }));
+  const picks = parsed.data.brands.slice(0, 10).map((p) => ({ ...p, onShortlist: rankOf.get(norm(p.name)) ?? null }));
   const named = new Set(picks.map((p) => norm(p.name)));
   const missed = ranked
     .map((b, i) => ({ rank: i + 1, name: b.brandName, affinity: b.affinity }))
