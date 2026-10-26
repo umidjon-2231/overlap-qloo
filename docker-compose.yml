@@ -1,5 +1,7 @@
-# Production stack for a single server: Caddy (HTTPS) → web (Next.js) + api (Hono) → Postgres.
-# Usage on the server:
+# Production stack: web (Next.js) + api (Hono) → Postgres.
+# The host's Apache terminates TLS (certbot) and proxies to the loopback ports below:
+#   /api/* → 127.0.0.1:3071 (prefix stripped), everything else → 127.0.0.1:3070.
+# See deploy/apache/overlap.u.co.uz.conf. Usage on the server:
 #   cp .env.example .env   # fill QLOO_API_KEY, CLAUDE_API_KEY, DOMAIN, POSTGRES_PASSWORD
 #   docker compose up -d --build
 services:
@@ -16,6 +18,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U overlap -d overlap"]
       interval: 5s
       retries: 10
+    # No ports: reachable only on the compose network.
 
   api:
     build:
@@ -30,6 +33,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8787/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    ports:
+      - "127.0.0.1:3071:8787"
 
   web:
     build:
@@ -41,24 +52,8 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      DOMAIN: ${DOMAIN}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - web
-      - api
+      - "127.0.0.1:3070:3000"
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:

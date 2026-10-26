@@ -6,6 +6,7 @@ import { BRAND_CATEGORIES, type BrandCategory } from "@overlap/shared";
 import { eventsAfter, subscribe } from "./agent/events.js";
 import { defaultConfig, resolveInput, startRun, type AgentConfig } from "./agent/orchestrator.js";
 import { db } from "./db/client.js";
+import { env } from "./env.js";
 import { activations, brandMatches, cityCells, cityProfiles, pitchPacks, runs, toolCalls } from "./db/schema.js";
 import { draftPitch } from "./pitch/draft.js";
 import { renderPitchPdf } from "./pitch/pdf.js";
@@ -47,7 +48,7 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
-const PRESET_CACHE_MS = 24 * 3_600_000;
+const PRESET_CACHE_MS = env.PRESET_CACHE_HOURS * 3_600_000;
 
 api.get("/presets", (c) => c.json(presets));
 
@@ -92,7 +93,8 @@ api.post("/runs", async (c) => {
 
   const active = await db.select({ id: runs.id }).from(runs).where(eq(runs.status, "running"));
   if (active.length >= MAX_CONCURRENT_RUNS) return c.json({ error: "Too many runs in progress. Try again in a minute." }, 429);
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  // The host proxy (Apache) appends the real client address last; earlier entries are client-supplied.
+  const ip = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() || "local";
   if (rateLimited(ip)) return c.json({ error: "Hourly run limit reached for this demo." }, 429);
 
   const runId = await startRun({ ...input, presetId }, config);

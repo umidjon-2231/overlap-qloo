@@ -59,14 +59,16 @@ Useful scripts:
 
 Keys live only in `.env` and are read by the API; the browser never sees them. Qloo responses are cached in Postgres at runtime and never committed.
 
-## Production (single server, Docker)
+## Production
+
+Live at **https://overlap.u.co.uz**. Every push to `main` is typechecked and deployed by GitHub Actions (`.github/workflows/deploy.yml` → `scripts/deploy.sh` on the server).
 
 ```bash
 cp .env.example .env    # set QLOO_API_KEY, CLAUDE_API_KEY, DOMAIN, POSTGRES_PASSWORD
 docker compose up -d --build
 ```
 
-Caddy serves `https://$DOMAIN` (automatic certificates), routes `/api/*` to the API and everything else to the web app. The API applies migrations on start.
+The host's Apache terminates TLS (certbot) and routes `/api/*` to the API and everything else to the web app (`deploy/apache/`). The API applies migrations on start.
 
 ## License
 

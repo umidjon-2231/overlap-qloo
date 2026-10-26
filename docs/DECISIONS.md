@@ -51,7 +51,7 @@ Any edit withdraws approval, so the exported text is exactly what was approved.
 ### D15. LLM-only comparison toggle deferred to the polish phase (2026-10-15)
 
 ### D16. Hosting: everything on the user's server with Docker Compose (2026-10-15)
-Postgres + API + web + Caddy (HTTPS, `/api/*` → API). Dev uses an existing local Postgres container.
+Postgres + API + web in Docker Compose on the user's server (`prod-host`, `/srv/overlap`), behind the host's Apache with a certbot certificate (`/api/*` → API), matching the other projects there. Pushes to `main` deploy through GitHub Actions with a forced-command deploy key. Dev uses an existing local Postgres container.
 *Rejected:* Vercel + Railway.
 
 ### D17. Repository private for now; `RESEARCH.md` never committed (2026-10-15)

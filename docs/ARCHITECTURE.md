@@ -13,7 +13,7 @@ API (Hono on Node 22, apps/api)
    └── Postgres (Drizzle): runs, results, events, tool-call log, response cache
 ```
 
-In production all of this runs on one server with `docker-compose.yml`: Caddy (HTTPS) routes `/api/*` to the API and everything else to the web app; Postgres runs in its own container. Keys live only in the API's environment.
+In production all of this runs on one server with `docker-compose.yml`: the host's Apache (HTTPS via certbot) routes `/api/*` to the API on `127.0.0.1:3071` and everything else to the web app on `127.0.0.1:3070`; Postgres runs in its own container with no host port. Keys live only in the API's environment.
 
 ## Run lifecycle
 

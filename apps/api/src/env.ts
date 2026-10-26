@@ -22,6 +22,8 @@ const schema = z.object({
   /** Input + output tokens per run (cached reads count at 10%). */
   RUN_TOKEN_BUDGET: z.coerce.number().int().default(600_000),
   CACHE_TTL_HOURS: z.coerce.number().default(24),
+  /** How long a preset's last successful run is served by "Open" before a new live run is needed. */
+  PRESET_CACHE_HOURS: z.coerce.number().default(24),
 });
 
 const parsed = schema.safeParse(process.env);

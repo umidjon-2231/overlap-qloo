@@ -26,6 +26,7 @@ On the current dev machine the database is the existing `dev-postgres` container
 | `RUN_QLOO_CALL_LIMIT` | 120 | network calls per run |
 | `RUN_TOKEN_BUDGET` | 600000 | cached reads count at 10% |
 | `CACHE_TTL_HOURS` | 24 | Qloo response cache |
+| `PRESET_CACHE_HOURS` | 24 | how long "Open" serves a preset's last run (720 in production) |
 | `WEB_ORIGIN` | `http://localhost:3000` | CORS; comma-separated |
 | `DOMAIN`, `POSTGRES_PASSWORD` | – | production compose |
 | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL` | localhost | web build args (inlined at build) |
@@ -46,14 +47,13 @@ On the current dev machine the database is the existing `dev-postgres` container
 
 ## Production
 
-```bash
-cp .env.example .env     # QLOO_API_KEY, CLAUDE_API_KEY, DOMAIN, POSTGRES_PASSWORD
-docker compose up -d --build
-```
+https://overlap.u.co.uz, on `prod-host` (SERVER_IP) in `/srv/overlap`.
 
-- Caddy gets certificates automatically for `DOMAIN` (ports 80/443 must be free and DNS pointed at the server).
-- The API container applies migrations on start.
-- The demo must stay up through judging (Nov 2–16, 2026). After deploy, open each preset once so cached results load instantly.
+- **DNS:** A record `overlap` → SERVER_IP in the u.co.uz zone (the DNS provider DNS manager).
+- **Proxy:** host Apache, vhost from `deploy/apache/overlap.u.co.uz.conf`; certbot `--apache` added the :443 vhost and the redirect (auto-renewed by the certbot timer). `/api/*` → `127.0.0.1:3071`, everything else → `127.0.0.1:3070`.
+- **Stack:** `docker compose up -d --build` with the server's `.env` (`DOMAIN=overlap.u.co.uz`, `PRESET_CACHE_HOURS=720`). The API container applies migrations on start. Postgres has no host port.
+- **Auto deploy:** every push to `main` (except docs/Markdown/brand) runs `.github/workflows/deploy.yml`: typecheck, then SSH with a deploy key whose `authorized_keys` entry is `restrict,command="/srv/overlap/scripts/deploy.sh"`. The script fast-forwards to `origin/main`, rebuilds and waits for health. Secrets: `PROD_SSH_KEY`, `PROD_KNOWN_HOSTS` (environment `production`). Run by hand: Actions tab → Deploy to prod → Run workflow, or `ssh prod-host /srv/overlap/scripts/deploy.sh`.
+- The demo must stay up through judging (Nov 2–16, 2026). Presets stay cached for 30 days on the server; re-warm with `docker compose exec api pnpm exec tsx src/scripts/run-agent.ts <presetId>`.
 
 ## Cost reference
 
