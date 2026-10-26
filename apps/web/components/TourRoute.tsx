@@ -231,11 +231,13 @@ function Scene({
       cam.updateMatrixWorld();
 
       // Place the DOM labels: city names just in front of each stop, brand tags above it.
-      const place = (key: string, p: THREE.Vector3, minY = 0, maxY = size.height) => {
+      const place = (key: string, p: THREE.Vector3, minY = 0, maxY = size.height, padX = 0) => {
         const el = anchors.current?.get(key);
         if (!el) return;
         scratch.copy(p).project(cam);
-        const x = ((scratch.x + 1) / 2) * size.width;
+        let x = ((scratch.x + 1) / 2) * size.width;
+        // Keep a centred element whole near the edges, but let it leave once its city has left the band.
+        if (padX && x > -padX / 2 && x < size.width + padX / 2) x = Math.min(size.width - padX, Math.max(padX, x));
         const y = Math.min(maxY, Math.max(minY, ((1 - scratch.y) / 2) * size.height));
         el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
         el.style.opacity = "1";
@@ -244,7 +246,7 @@ function Scene({
         const s = layout.stops[i]!;
         // Labels stay above the bottom rule; tags (up to two, about 50px tall) stay 16px below the top rule.
         place(`label:${city}`, new THREE.Vector3(s.x, 0, s.z + 0.95), 0, size.height - 30);
-        place(`tag:${city}`, new THREE.Vector3(s.x, 0.9, s.z - 0.2), 66);
+        place(`tag:${city}`, new THREE.Vector3(s.x, 0.9, s.z - 0.2), 66, size.height, 92);
       });
     }
   });
