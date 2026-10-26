@@ -1,4 +1,4 @@
-import { BRAND_CATEGORIES, type BrandCategory, type RunEvent } from "@overlap/shared";
+import { BRAND_CATEGORIES, isSensitiveTag, type BrandCategory, type RunEvent } from "@overlap/shared";
 
 /* The agent is shown as a black box: per-city print state and short plain lines of what it is doing,
    derived from the run's events. Tool names, reasoning text and raw inputs never reach the screen. */
@@ -46,6 +46,28 @@ const label = (c: string) => (c in BRAND_CATEGORIES ? BRAND_CATEGORIES[c as Bran
 function listText(items: string[]): string {
   if (items.length <= 2) return items.join(" and ");
   return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+// Place genres every city shares; they say nothing about this crowd.
+const GENERIC_PLACES = new Set(["bar", "restaurant", "coffee shop", "cafe", "tourist attraction", "american"]);
+
+/** A short crowd line from localised taste tags: music first, then reading, then food. */
+function crowdText(tags: { name: string; subtype?: string }[]): string | null {
+  const pick = (kind: string) =>
+    tags
+      .filter((t) => t.subtype?.includes(kind))
+      .map((t) => t.name.toLowerCase().replace(/\s*-\s*/g, "-"))
+      .filter((n) => !GENERIC_PLACES.has(n))
+      .slice(0, 3);
+  const clauses = [
+    pick("genre:music").length ? `Into ${listText(pick("genre:music"))}` : null,
+    pick("genre:media").length ? `reads ${listText(pick("genre:media"))}` : null,
+    pick("specialty_dish").length ? `orders ${listText(pick("specialty_dish"))}` : null,
+    pick("genre:place").length ? `eats ${listText(pick("genre:place"))}` : null,
+  ].filter((c): c is string => !!c);
+  if (!clauses.length) return null;
+  const text = clauses.slice(0, 2).join("; ");
+  return text[0]!.toUpperCase() + text.slice(1);
 }
 
 function nearestCity(p: Point, centres: Map<string, Point>): string | undefined {
@@ -146,10 +168,10 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
             });
         }
       } else if (p.name === "crowd_profile") {
-        const d = (p.data ?? {}) as { city?: string; tasteTags?: { name: string }[] };
+        const d = (p.data ?? {}) as { city?: string; tasteTags?: { name: string; subtype?: string }[] };
         const city = matchCity(d.city);
-        const tags = (d.tasteTags ?? []).slice(0, 4).map((t) => t.name.toLowerCase());
-        if (city && tags.length) notes.push({ key: `crowd-${id}`, city, kind: "crowd", text: `The crowd leans ${listText(tags)}` });
+        const text = crowdText((d.tasteTags ?? []).filter((t) => !isSensitiveTag(t)));
+        if (city && text) notes.push({ key: `crowd-${id}`, city, kind: "crowd", text });
       } else if (p.name === "local_partners") {
         const d = (p.data ?? {}) as { items?: { name: string }[] };
         const city = step?.cities[0];

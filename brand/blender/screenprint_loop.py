@@ -8,8 +8,9 @@ Flat brand inks (emission only, Standard view transform) with Freestyle ink
 lines, so it reads as a printed illustration rather than glossy 3D.
 
 Render (from the repo root):
-  blender -b -P brand/blender/screenprint_loop.py -- <out_dir>
-writes <out_dir>/frame_0001.png ... (72 frames, 24 fps, 960x600, Paper ground).
+  blender -b -P brand/blender/screenprint_loop.py -- <out_dir> --render [--transparent]
+writes <out_dir>/frame_0001.png ... (72 frames, 24 fps, 960x600, Paper ground or alpha).
+Encode for apps/web/public/motion: WebM VP9 with alpha (yuva420p) plus an MP4 composited on Paper.
 """
 
 import math
@@ -52,8 +53,10 @@ scene.frame_start = 1
 scene.frame_end = FRAMES
 scene.view_settings.view_transform = "Standard"
 scene.view_settings.look = "None"
-scene.render.film_transparent = False
+# --transparent renders RGBA for an alpha WebM, so the loop sits on any page ground without a box.
+scene.render.film_transparent = "--transparent" in sys.argv
 scene.render.image_settings.file_format = "PNG"
+scene.render.image_settings.color_mode = "RGBA" if scene.render.film_transparent else "RGB"
 scene.render.filepath = os.path.join(OUT, "frame_")
 try:
     scene.eevee.taa_render_samples = 16

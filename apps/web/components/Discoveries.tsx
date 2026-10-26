@@ -15,7 +15,7 @@ function PressLoop() {
   return (
     <video
       ref={ref}
-      className="aspect-[8/5] w-full max-w-[24rem] justify-self-center mix-blend-darken md:justify-self-end"
+      className="aspect-[8/5] w-full max-w-[24rem] justify-self-center md:justify-self-end"
       muted
       loop
       playsInline
