@@ -33,3 +33,8 @@ coverage/
 
 # Impeccable review captures (local only)
 apps/web/.impeccable/review/
+
+# Blender working files (rebuild with brand/blender/screenprint_loop.py)
+brand/blender/*.blend
+brand/blender/*.blend1
+brand/blender/out/

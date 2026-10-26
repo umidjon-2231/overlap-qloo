@@ -46,7 +46,7 @@ export function Home() {
             partners near the fans, and drafts a pitch pack you approve before anything leaves the app.
           </p>
 
-          {error && <p className="mt-6 max-w-2xl border-t-2 border-coral pt-2 text-sm">{error}</p>}
+          {error && <p className="mt-6 max-w-2xl border-t-2 border-warn pt-2 text-sm">{error}</p>}
 
           <section aria-labelledby="your-tour" className="mt-12">
             <div className="mb-5 border-b border-ink pb-2">

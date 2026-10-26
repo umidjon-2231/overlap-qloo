@@ -11,10 +11,29 @@ export interface LogLine {
   done: boolean;
 }
 
+/** A brand as it surfaces mid-run, before the final shortlist is checked. */
+export interface FoundBrand {
+  id: string;
+  name: string;
+  category: string;
+  affinity: number;
+}
+
+/** One early finding about a city, straight from a Qloo result. */
+export interface CityNote {
+  key: string;
+  city: string;
+  kind: "rank" | "crowd" | "partners";
+  text: string;
+}
+
 export interface Progress {
   cities: Record<string, CityState>;
   lines: LogLine[];
   lookups: number;
+  brands: FoundBrand[];
+  brandsScanned: number;
+  notes: CityNote[];
 }
 
 interface Point {
@@ -51,6 +70,9 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
   const cityDone = new Map<string, Set<string>>();
   const lines: LogLine[] = [];
   let lookups = 0;
+  const brands = new Map<string, FoundBrand>();
+  let brandsScanned = 0;
+  const notes: CityNote[] = [];
 
   const matchCity = (name: unknown) => runCities.find((c) => c.toLowerCase() === String(name ?? "").toLowerCase());
   const push = (key: string, text: string): LogLine => {
@@ -102,6 +124,37 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
         const city = matchCity(d.city);
         const centre = d.hotspots?.[0] ?? (d.locality?.lat != null ? (d.locality as Point) : undefined);
         if (city && centre) centres.set(city, centre);
+      } else if (p.name === "find_brands" && Array.isArray(p.data)) {
+        for (const group of p.data as { category: string; brands?: { entityId: string; name: string; affinity: number | null }[] }[]) {
+          for (const b of group.brands ?? []) {
+            brandsScanned++;
+            const prev = brands.get(b.entityId);
+            if (b.affinity != null && (!prev || b.affinity > prev.affinity))
+              brands.set(b.entityId, { id: b.entityId, name: b.name, category: label(group.category), affinity: b.affinity });
+          }
+        }
+      } else if (p.name === "city_fit" && Array.isArray(p.data)) {
+        for (const c of p.data as { city: string; cells?: { name?: string; inLocalTop: boolean; localRank?: number }[] }[]) {
+          const city = matchCity(c.city);
+          const top = (c.cells ?? []).filter((x) => x.inLocalTop && x.name).sort((a, b) => a.localRank! - b.localRank!);
+          if (city && top.length)
+            notes.push({
+              key: `rank-${id}-${city}`,
+              city,
+              kind: "rank",
+              text: top.slice(0, 2).map((x) => `${x.name} ranks #${x.localRank} locally`).join(", "),
+            });
+        }
+      } else if (p.name === "crowd_profile") {
+        const d = (p.data ?? {}) as { city?: string; tasteTags?: { name: string }[] };
+        const city = matchCity(d.city);
+        const tags = (d.tasteTags ?? []).slice(0, 4).map((t) => t.name.toLowerCase());
+        if (city && tags.length) notes.push({ key: `crowd-${id}`, city, kind: "crowd", text: `The crowd leans ${listText(tags)}` });
+      } else if (p.name === "local_partners") {
+        const d = (p.data ?? {}) as { items?: { name: string }[] };
+        const city = step?.cities[0];
+        const places = (d.items ?? []).slice(0, 3).map((x) => x.name);
+        if (city && places.length) notes.push({ key: `partners-${id}`, city, kind: "partners", text: `Fans gather near ${listText(places)}` });
       }
       if (step) {
         step.line.done = true;
@@ -120,5 +173,12 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
   }
 
   if (finished) for (const l of lines) l.done = true;
-  return { cities, lines, lookups };
+  return {
+    cities,
+    lines,
+    lookups,
+    brands: [...brands.values()].sort((a, b) => b.affinity - a.affinity),
+    brandsScanned,
+    notes,
+  };
 }

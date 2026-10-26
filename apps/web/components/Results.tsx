@@ -275,7 +275,7 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
           {brandsHere.length > 0 ? (
             brandsHere.slice(0, 5).map(({ cell, brand }) => (
               <span key={brand.brandEntityId}>
-                {brand.brandName} <span className="font-mono text-coral tnum">#{cell.rankInCity}</span>
+                {brand.brandName} <span className="font-mono text-on-ink-soft tnum">#{cell.rankInCity}</span>
               </span>
             ))
           ) : (

@@ -9,7 +9,8 @@ import { PitchPackPanel } from "./PitchPackPanel";
 import { ProvenanceProvider } from "./Provenance";
 import { CityDetail, CityGrid, Shortlist } from "./Results";
 import { TourStack } from "./TourStack";
-import { AgentLabel, buttonClass } from "./ui";
+import { Discoveries } from "./Discoveries";
+import { AgentLabel, Button, buttonClass } from "./ui";
 
 const EVENT_TYPES = ["status", "agent_text", "tool_start", "tool_end", "needs_input", "result", "error"] as const;
 
@@ -56,10 +57,34 @@ export function RunView({ runId }: { runId: string }) {
     return () => source.close();
   }, [runId, refresh]);
 
-  const progress = useMemo(
-    () => (data ? deriveProgress(events, data.run.cities, data.run.status) : null),
-    [events, data],
-  );
+  // Replay a finished run: its recorded events, compressed to about 25 seconds.
+  const [replayCount, setReplayCount] = useState<number | null>(null);
+  const timers = useRef<number[]>([]);
+  const stopReplay = useCallback(() => {
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    setReplayCount(null);
+  }, []);
+  useEffect(() => stopReplay, [stopReplay]);
+  const startReplay = () => {
+    if (events.length === 0) return;
+    stopReplay();
+    const t0 = Date.parse(events[0]!.at);
+    const total = Date.parse(events.at(-1)!.at) - t0;
+    const scale = total > 0 ? Math.min(1, 24_000 / total) : 0;
+    setReplayCount(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    events.forEach((e, i) => timers.current.push(window.setTimeout(() => setReplayCount(i + 1), 700 + (Date.parse(e.at) - t0) * scale)));
+    timers.current.push(window.setTimeout(stopReplay, 700 + total * scale + 2500));
+  };
+  const replaying = replayCount !== null;
+
+  const progress = useMemo(() => {
+    if (!data) return null;
+    return replaying
+      ? deriveProgress(events.slice(0, replayCount), data.run.cities, "running")
+      : deriveProgress(events, data.run.cities, data.run.status);
+  }, [events, data, replaying, replayCount]);
 
   if (loadError) {
     return (
@@ -81,9 +106,10 @@ export function RunView({ runId }: { runId: string }) {
     );
   }
 
-  const { run } = data;
+  const run = replaying ? { ...data.run, status: "running" as const } : data.run;
+  const view = replaying ? { ...data, run } : data;
   const live = run.status === "running";
-  const hasResults = data.brands.length > 0;
+  const hasResults = data.brands.length > 0 && !replaying;
   const latest = progress.lines.at(-1);
 
   const openPitch = (id: string) => {
@@ -98,11 +124,18 @@ export function RunView({ runId }: { runId: string }) {
   return (
     <ProvenanceProvider>
       <main className="flex flex-1 flex-col lg:flex-row">
-        <TourStack data={data} progress={progress} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+        <TourStack data={view} progress={progress} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
 
         <div className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
           <header className="max-w-[72rem]">
-            <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
+              {data.run.status === "done" && !replaying && events.length > 0 && (
+                <Button variant="secondary" onClick={startReplay}>
+                  Watch it work
+                </Button>
+              )}
+            </div>
             <p className="mt-1 text-sm text-ink-soft">
               {run.cities.length} {run.cities.length === 1 ? "city" : "cities"} · {run.artists.map((a) => a.name ?? a.query).join(", ")}
               {run.grounding && (
@@ -125,7 +158,7 @@ export function RunView({ runId }: { runId: string }) {
           {run.status === "needs_input" && run.pendingInput && <EntityPicker runId={run.id} input={run.pendingInput} onDone={refresh} />}
 
           {run.status === "error" && (
-            <div className="mt-6 max-w-2xl border-t-2 border-coral pt-3">
+            <div className="mt-6 max-w-2xl border-t-2 border-warn pt-3">
               <p className="font-semibold">The run stopped before it finished.</p>
               <p className="mt-1 text-sm text-ink-soft">{run.error}</p>
               <Link href="/" className={buttonClass("secondary", "mt-4")}>
@@ -134,9 +167,9 @@ export function RunView({ runId }: { runId: string }) {
             </div>
           )}
 
-          {live && !hasResults && <Working text={latest?.text} />}
+          {live && !hasResults && <Discoveries progress={progress} total={run.cities.length} replaying={replaying} onSkip={stopReplay} />}
 
-          {run.summary && <Summary text={run.summary} />}
+          {run.summary && !replaying && <Summary text={run.summary} />}
 
           {hasResults && (
             <>
@@ -183,24 +216,6 @@ function Summary({ text }: { text: string }) {
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="mt-1 text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
         {open ? "Show less" : "Read the full summary"}
       </button>
-    </section>
-  );
-}
-
-function Working({ text }: { text?: string }) {
-  return (
-    <section className="mt-10 max-w-2xl">
-      <p className="display text-[3.2rem] sm:text-[4rem]">Printing the tour</p>
-      <p className="mt-3 text-lg leading-relaxed text-ink-soft">
-        Overlap is reading Qloo&apos;s taste data city by city. The shortlist appears once every number has been checked, usually in one to two
-        minutes.
-      </p>
-      {text && (
-        <p className="mt-6 flex items-center gap-2 font-medium">
-          <span className="live-dot size-2 rounded-full bg-coral" aria-hidden="true" />
-          {text}
-        </p>
-      )}
     </section>
   );
 }

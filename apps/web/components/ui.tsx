@@ -98,7 +98,9 @@ export function StatusPill({ status, onInk = false }: { status: string; onInk?: 
         ? "text-on-ink"
         : "text-ok"
       : status === "error"
-        ? "text-coral"
+        ? onInk
+          ? "text-on-ink-soft"
+          : "text-warn"
         : status === "needs_input"
           ? "text-coral"
           : onInk
