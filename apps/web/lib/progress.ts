@@ -104,6 +104,8 @@ export function deriveProgress(events: RunEvent[], runCities: string[], status: 
 
   const matchCity = (name: unknown) => runCities.find((c) => c.toLowerCase() === String(name ?? "").toLowerCase());
   const push = (key: string, text: string): LogLine => {
+    // Any new step means the seller's pick (if one was pending) has been made.
+    for (const l of lines) if (l.key.startsWith("ask")) l.done = true;
     const last = lines.at(-1);
     if (last && last.text === text) {
       last.done = false;

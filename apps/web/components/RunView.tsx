@@ -284,7 +284,7 @@ function EntityPicker({
                 <span className="block font-semibold">{c.name}</span>
                 {c.description && <span className="block text-sm text-ink-soft group-hover:text-on-ink-soft">{c.description}</span>}
               </span>
-              <span className="text-sm font-semibold text-coral-ink group-hover:text-coral">Use this</span>
+              <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-coral-ink group-hover:text-coral">Use this</span>
             </button>
           </li>
         ))}

@@ -131,7 +131,13 @@ export async function resolveInput(runId: string, choice: { entityId: string; na
     ],
   });
   state.pendingAsk = undefined;
-  await db.update(runs).set({ status: "running", pendingInput: null, updatedAt: new Date() }).where(eq(runs.id, runId));
+  // Record the seller's pick on the artist it resolves, so the UI shows the confirmed name.
+  const artists = run.artists.map((a) => ({ ...a }));
+  const open = artists.filter((a) => !a.entityId);
+  const target =
+    open.find((a) => choice.name?.toLowerCase().includes(a.query.toLowerCase())) ?? (open.length === 1 ? open[0] : undefined);
+  if (target) Object.assign(target, { entityId: choice.entityId, name: choice.name ?? target.query });
+  await db.update(runs).set({ status: "running", pendingInput: null, artists, updatedAt: new Date() }).where(eq(runs.id, runId));
   await saveState(runId, state);
   await emit(runId, "status", { status: "running", resolved: choice });
   void runLoop(runId).catch((e) => failRun(runId, e));
