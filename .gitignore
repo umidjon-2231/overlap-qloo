@@ -30,3 +30,6 @@ RESEARCH.md
 *.log
 coverage/
 .vercel
+
+# Impeccable review captures (local only)
+apps/web/.impeccable/review/

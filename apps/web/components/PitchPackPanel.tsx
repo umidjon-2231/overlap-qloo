@@ -3,7 +3,7 @@
 import { marked } from "marked";
 import { useEffect, useMemo, useState } from "react";
 import { api, type RunPayload } from "@/lib/api";
-import { Button, Card, SectionTitle } from "./ui";
+import { Button, buttonClass, SectionTitle } from "./ui";
 
 // Raw HTML in model output or seller edits is dropped, never rendered.
 marked.use({ renderer: { html: () => "" } });
@@ -60,107 +60,133 @@ export function PitchPackPanel({
 
   return (
     <section>
-      <SectionTitle step={5} title="Pitch pack" hint="Agent drafts, you edit and approve. Nothing is sent." />
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={brandId ?? ""}
-            onChange={(e) => onBrandChange(e.target.value)}
-            className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
-          >
-            <option value="" disabled>
-              Choose a brand…
-            </option>
-            {data.brands.map((b) => (
-              <option key={b.brandEntityId} value={b.brandEntityId}>
-                {b.brandName}
-                {data.pitches.some((p) => p.brandEntityId === b.brandEntityId && p.approved) ? " ✓ approved" : ""}
-              </option>
-            ))}
-          </select>
-          {brand && (
-            <Button
-              variant={saved ? "secondary" : "primary"}
-              disabled={busy !== null}
-              onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
-            >
-              {busy === "draft" ? "Drafting… (~20s)" : saved ? "Redraft" : "Draft pitch pack"}
-            </Button>
-          )}
-          {saved && (
-            <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${approved ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
-              {approved ? "Approved" : dirty ? "Unsaved edits" : "Draft · needs approval"}
-            </span>
-          )}
-        </div>
+      <SectionTitle title="Pitch pack" hint="Overlap drafts, you edit and approve. Nothing is sent." />
+      <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
+        <nav aria-label="Brands">
+          <ul className="border-b border-ink">
+            {data.brands.map((b) => {
+              const p = data.pitches.find((x) => x.brandEntityId === b.brandEntityId);
+              const current = b.brandEntityId === brandId;
+              return (
+                <li key={b.brandEntityId}>
+                  <button
+                    type="button"
+                    aria-current={current}
+                    onClick={() => onBrandChange(b.brandEntityId)}
+                    className="flex w-full items-baseline justify-between gap-3 border-t border-ink px-2 py-2.5 text-left transition-colors hover:bg-paper-2 aria-[current=true]:bg-ink aria-[current=true]:text-on-ink"
+                  >
+                    <span className="font-semibold">{b.brandName}</span>
+                    <span className={`text-xs ${p?.approved ? "text-ok" : "opacity-60"} ${current && p?.approved ? "text-on-ink" : ""}`}>
+                      {p ? (p.approved ? "Approved" : "Draft") : ""}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-        {error && <p className="mt-3 text-sm text-decision">{error}</p>}
-        {!brand && <p className="mt-4 text-sm text-muted">Pick a brand from the shortlist to draft its pitch pack.</p>}
+        <div className="min-w-0">
+          {!brand && <p className="text-ink-soft">Pick a brand to draft its pitch pack.</p>}
 
-        {saved && (
-          <>
-            <div className="mt-4 flex gap-2 border-b border-line text-sm">
-              <button className={`-mb-px border-b-2 px-2 py-1 ${!editing ? "border-foreground" : "border-transparent text-muted"}`} onClick={() => setEditing(false)}>
-                Preview
-              </button>
-              <button className={`-mb-px border-b-2 px-2 py-1 ${editing ? "border-foreground" : "border-transparent text-muted"}`} onClick={() => setEditing(true)}>
-                Edit
-              </button>
+          {brand && !saved && (
+            <div className="max-w-xl border-t-2 border-ink pt-5">
+              <h3 className="display-wide text-[1.6rem]">{brand.brandName}</h3>
+              <p className="mt-2 leading-relaxed text-ink-soft">
+                Overlap writes the pitch, city by city plan, activations, measurement plan and outreach email from this run&apos;s Qloo evidence. You
+                review and edit it, then approve before anything can be exported.
+              </p>
+              <Button className="mt-5" disabled={busy !== null} onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}>
+                {busy === "draft" ? "Writing the pitch… about 20 s" : "Draft pitch pack"}
+              </Button>
             </div>
-            {editing ? (
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                className="mt-3 h-[28rem] w-full rounded-md border border-line p-3 font-mono text-xs leading-relaxed"
-              />
-            ) : (
-              <div className="markdown mt-3 max-h-[36rem] overflow-y-auto text-sm" dangerouslySetInnerHTML={{ __html: html }} />
-            )}
+          )}
 
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              {dirty && (
-                <Button variant="secondary" disabled={busy !== null} onClick={() => act("save", () => api.savePitch(data.run.id, brand!.brandEntityId, draft))}>
-                  {busy === "save" ? "Saving…" : "Save edits"}
+          {brand && saved && (
+            <>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-ink pb-3">
+                <div role="tablist" aria-label="Pitch pack view" className="flex gap-1">
+                  {[
+                    { id: false, label: "Preview" },
+                    { id: true, label: "Edit" },
+                  ].map((t) => (
+                    <button
+                      key={t.label}
+                      role="tab"
+                      aria-selected={editing === t.id}
+                      onClick={() => setEditing(t.id)}
+                      className="rounded-[2px] px-3 py-1.5 text-sm font-semibold text-ink-soft hover:text-ink aria-selected:bg-ink aria-selected:text-on-ink"
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <span className={`text-sm font-semibold ${approved ? "text-ok" : "text-warn"}`}>
+                  {approved ? "Approved" : dirty ? "Unsaved edits" : "Draft: needs your approval"}
+                </span>
+                <button
+                  type="button"
+                  className="ml-auto text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-40"
+                  disabled={busy !== null}
+                  onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
+                >
+                  {busy === "draft" ? "Rewriting… about 20 s" : "Rewrite draft"}
+                </button>
+              </div>
+
+              <div className="bg-sheet px-5 py-6 sm:px-8">
+                {editing ? (
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    aria-label="Pitch pack Markdown"
+                    className="h-[32rem] w-full resize-y border border-rule bg-transparent p-3 font-mono text-xs leading-relaxed focus:border-ink focus:outline-none"
+                  />
+                ) : (
+                  <div className="markdown text-[0.95rem]" dangerouslySetInnerHTML={{ __html: html }} />
+                )}
+              </div>
+
+              {error && <p className="mt-3 text-sm text-coral-ink">{error}</p>}
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {dirty && (
+                  <Button variant="secondary" disabled={busy !== null} onClick={() => act("save", () => api.savePitch(data.run.id, brand.brandEntityId, draft))}>
+                    {busy === "save" ? "Saving…" : "Save edits"}
+                  </Button>
+                )}
+                <Button disabled={busy !== null || dirty || approved} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
+                  {approved ? "Approved" : busy === "approve" ? "Approving…" : "Approve pitch pack"}
                 </Button>
-              )}
-              <Button disabled={busy !== null || dirty || approved} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand!.brandEntityId))}>
-                {approved ? "Approved ✓" : busy === "approve" ? "Approving…" : "Approve"}
-              </Button>
-              <span className="mx-1 h-5 w-px bg-line" />
-              <Button
-                variant="secondary"
-                disabled={!approved}
-                onClick={async () => {
-                  await navigator.clipboard.writeText(draft);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-              >
-                {copied ? "Copied" : "Copy Markdown"}
-              </Button>
-              <a
-                href={approved ? api.pdfUrl(data.run.id, brand!.brandEntityId) : undefined}
-                aria-disabled={!approved}
-                className={`rounded-md border border-line px-3 py-1.5 text-sm font-medium ${approved ? "hover:bg-zinc-50" : "pointer-events-none opacity-50"}`}
-              >
-                Download PDF
-              </a>
-              <a
-                href={approved ? mailto : undefined}
-                aria-disabled={!approved}
-                className={`rounded-md border border-line px-3 py-1.5 text-sm font-medium ${approved ? "hover:bg-zinc-50" : "pointer-events-none opacity-50"}`}
-              >
-                Open email draft
-              </a>
-              {!approved && <span className="text-xs text-muted">Export unlocks after approval.</span>}
-            </div>
-          </>
-        )}
-        <p className="mt-4 rounded-md bg-zinc-50 p-2 text-[11px] text-muted">
-          Rights note: artist and brand names identify; they do not imply endorsement. Real deals need talent approval and rights clearance.
-          Overlap never contacts brands. You send the pitch yourself.
-        </p>
-      </Card>
+                <span className="mx-2 hidden h-6 w-px bg-rule sm:block" aria-hidden="true" />
+                <Button
+                  variant="secondary"
+                  disabled={!approved}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(draft);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                >
+                  {copied ? "Copied" : "Copy Markdown"}
+                </Button>
+                <a href={approved ? api.pdfUrl(data.run.id, brand.brandEntityId) : undefined} aria-disabled={!approved} className={buttonClass("secondary")}>
+                  Download PDF
+                </a>
+                <a href={approved ? mailto : undefined} aria-disabled={!approved} className={buttonClass("secondary")}>
+                  Open email draft
+                </a>
+              </div>
+              {!approved && <p className="mt-2 text-xs text-ink-soft">Export unlocks after you approve.</p>}
+            </>
+          )}
+
+          <p className="mt-8 max-w-[72ch] border-t border-rule pt-3 text-xs leading-relaxed text-ink-soft">
+            Rights note: artist and brand names identify; they do not imply endorsement. Real deals need talent approval and rights clearance.
+            Overlap never contacts brands. You send the pitch yourself.
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

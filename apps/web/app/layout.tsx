@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"] });
+const display = Bricolage_Grotesque({ variable: "--font-display-face", subsets: ["latin"], axes: ["wdth", "opsz"] });
+const ui = Inter({ variable: "--font-ui", subsets: ["latin"] });
+const data = JetBrains_Mono({ variable: "--font-data", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   // Absolute base for og:image and other metadata URLs.
@@ -16,20 +17,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} ${ui.variable} ${data.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <header className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center">
-              <Image src="/brand/overlap-logo-horizontal-light.svg" alt="Overlap" width={624} height={174} priority unoptimized className="h-7 w-auto" />
+        <header className="on-ink bg-ink text-on-ink">
+          <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
+            <Link href="/" className="flex shrink-0 items-center" aria-label="Overlap home">
+              <Image src="/brand/overlap-logo-horizontal-dark.svg" alt="Overlap" width={624} height={174} priority unoptimized className="h-7 w-auto" />
             </Link>
-            <span className="text-xs text-muted">Sponsorship agent · evidence from Qloo taste data</span>
+            <Link
+              href="/"
+              className="rounded-[2px] border border-on-ink-rule px-3 py-1.5 text-sm font-medium text-on-ink transition-colors hover:border-on-ink hover:bg-on-ink hover:text-ink"
+            >
+              New run
+            </Link>
           </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
-        <footer className="border-t border-line px-4 py-4 text-center text-xs text-muted">
-          Affinity scores are aggregate taste signals from Qloo, not forecasts. Names identify; they do not imply endorsement.
-        </footer>
       </body>
     </html>
   );

@@ -1,67 +1,258 @@
 @import "tailwindcss";
 
-/* Simple prototype theme. Colour roles: evidence = Qloo data, decision = picks/actions, ok/warn = coverage. */
+/* Tour Shirt: spot-ink screenprint on natural cotton.
+   Paper = work ground, Ink = shell and text, Coral = action and decision only,
+   Evidence blue = Qloo data, green/amber = coverage marks. Flat ink: no gradients, glow or soft shadows. */
 :root {
-  --background: #f6f6f4;
-  --surface: #ffffff;
-  --foreground: #18181b;
-  --muted: #71717a;
-  --line: #e4e4e7;
-  --evidence: #1d4ed8;
-  --evidence-soft: #eff6ff;
-  --decision: #e11d48;
-  --decision-soft: #fff1f2;
-  --ok: #059669;
-  --ok-soft: #ecfdf5;
-  --warn: #d97706;
-  --warn-soft: #fffbeb;
+  --paper: #f3f3f1;
+  --paper-2: #e9e9e5;
+  --sheet: #fbfbf9;
+  --ink: #111216;
+  --ink-2: #2a2c33;
+  --ink-soft: #5d5f66;
+  --rule: #cfcfc9;
+  --rule-strong: #111216;
+  --coral: #ff5a36;
+  --coral-ink: #c4381a;
+  --coral-soft: #ffe3da;
+  --evidence: #2d4fd6;
+  --evidence-soft: #e2e7fb;
+  --ok: #1f7a4d;
+  --ok-soft: #dcefe3;
+  --warn: #9a6400;
+  --warn-soft: #f7ead0;
+  /* On the Ink rail */
+  --on-ink: #f3f3f1;
+  --on-ink-soft: #9c9ea5;
+  --on-ink-rule: #2e3038;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-sheet: var(--sheet);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-soft: var(--ink-soft);
+  --color-rule: var(--rule);
+  --color-coral: var(--coral);
+  --color-coral-ink: var(--coral-ink);
+  --color-coral-soft: var(--coral-soft);
   --color-evidence: var(--evidence);
   --color-evidence-soft: var(--evidence-soft);
-  --color-decision: var(--decision);
-  --color-decision-soft: var(--decision-soft);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
-  --font-sans: var(--font-plex-sans);
-  --font-mono: var(--font-plex-mono);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-soft: var(--on-ink-soft);
+  --color-on-ink-rule: var(--on-ink-rule);
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display-face);
+  --font-mono: var(--font-data);
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
 }
 
+::selection {
+  background: var(--coral);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--evidence);
+  outline-offset: 2px;
+}
+.on-ink :focus-visible {
+  outline-color: var(--coral);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.on-ink,
+.on-ink * {
+  scrollbar-color: var(--on-ink-rule) transparent;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Scroll strips whose clipped edge already signals more content. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Display voice: Bricolage Grotesque at its narrowest width, heavy, caps. */
+.display {
+  font-family: var(--font-display-face), sans-serif;
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
+}
+.display-wide {
+  font-family: var(--font-display-face), sans-serif;
+  font-variation-settings: "wdth" 85, "opsz" 48;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- The tour stack: city lines print from outline to solid ink ---------- */
+.print-line {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--on-ink-soft);
+}
+.print-line > .ink {
+  position: absolute;
+  inset: 0;
+  color: var(--on-ink);
+  -webkit-text-stroke: 0;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--print-delay, 0ms);
+}
+.print-line[data-state="working"] {
+  -webkit-text-stroke-color: var(--coral);
+}
+.print-line[data-state="working"] > .ink {
+  color: var(--coral);
+  animation: squeegee 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+}
+.print-line[data-state="printed"] {
+  -webkit-text-stroke-color: transparent;
+}
+.print-line[data-state="printed"] > .ink {
+  clip-path: inset(0 0 0 0);
+}
+.stack-row[aria-current="true"] .print-line > .ink {
+  color: var(--ink);
+}
+.stack-row[aria-current="true"] .print-line {
+  -webkit-text-stroke-color: var(--ink-soft);
+}
+
+@keyframes squeegee {
+  from {
+    clip-path: inset(0 92% 0 0);
+  }
+  to {
+    clip-path: inset(0 18% 0 0);
+  }
+}
+
+.live-dot {
+  animation: blink 1.2s steps(2, jump-none) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.log-enter {
+  animation: log-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes log-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .print-line > .ink,
+  .print-line[data-state="working"] > .ink {
+    transition: none;
+    animation: none;
+  }
+  .print-line[data-state="working"] > .ink {
+    clip-path: inset(0 50% 0 0);
+  }
+  .live-dot,
+  .log-enter {
+    animation: none;
+  }
+}
+
+/* ---------- Pitch pack prose ---------- */
+.markdown {
+  max-width: 72ch;
+  line-height: 1.6;
+}
+.markdown h1,
 .markdown h2 {
-  margin: 1.25rem 0 0.5rem;
-  font-size: 1.05rem;
+  font-family: var(--font-display-face), sans-serif;
+  font-variation-settings: "wdth" 85, "opsz" 48;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.markdown h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+.markdown h2 {
+  margin: 2rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--ink);
+  font-size: 1.15rem;
+}
+.markdown h3 {
+  margin: 1.25rem 0 0.25rem;
   font-weight: 600;
 }
 .markdown p {
   margin: 0.5rem 0;
-  line-height: 1.6;
 }
 .markdown ul,
 .markdown ol {
   margin: 0.5rem 0;
   padding-left: 1.25rem;
-  line-height: 1.6;
 }
 .markdown ul {
-  list-style: disc;
+  list-style: square;
 }
 .markdown ol {
   list-style: decimal;
 }
+.markdown li {
+  margin: 0.2rem 0;
+}
+.markdown li::marker {
+  color: var(--coral-ink);
+}
 .markdown strong {
-  font-weight: 600;
+  font-weight: 650;
+}
+.markdown code {
+  font-family: var(--font-data), monospace;
+  font-size: 0.85em;
+  color: var(--evidence);
+}
+.markdown blockquote {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--paper-2);
 }

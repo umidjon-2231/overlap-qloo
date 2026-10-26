@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
   // Workspace package shipped as TypeScript source.
   transpilePackages: ["@overlap/shared"],
   output: "standalone",
+  // Dev only: API_PROXY_TARGET=https://overlap.u.co.uz/api serves /api/* from another API (same origin, no CORS),
+  // for working on the UI without a local database. Pair with NEXT_PUBLIC_API_URL=http://localhost:3000/api.
+  async rewrites() {
+    const target = process.env.API_PROXY_TARGET;
+    return target ? [{ source: "/api/:path*", destination: `${target}/:path*` }] : [];
+  },
   turbopack: {
     rules: {
       "*.css": {

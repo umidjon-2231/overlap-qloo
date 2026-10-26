@@ -2,23 +2,33 @@
 
 import type { RunEvent } from "@overlap/shared";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type RunPayload } from "@/lib/api";
-import { AgentTrace } from "./AgentTrace";
+import { deriveProgress } from "@/lib/progress";
 import { PitchPackPanel } from "./PitchPackPanel";
 import { ProvenanceProvider } from "./Provenance";
-import { CityActivation, CityGrid, Shortlist } from "./Results";
-import { AgentLabel, Button, Card, StatusPill } from "./ui";
+import { CityDetail, CityGrid, Shortlist } from "./Results";
+import { TourStack } from "./TourStack";
+import { AgentLabel, buttonClass } from "./ui";
 
 const EVENT_TYPES = ["status", "agent_text", "tool_start", "tool_end", "needs_input", "result", "error"] as const;
+
+const TABS = [
+  { id: "shortlist", label: "Shortlist" },
+  { id: "grid", label: "Brand × City" },
+  { id: "cities", label: "Cities" },
+  { id: "pitch", label: "Pitch pack" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
 
 export function RunView({ runId }: { runId: string }) {
   const [data, setData] = useState<RunPayload | null>(null);
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("shortlist");
+  const [city, setCity] = useState<string | null>(null);
   const [pitchBrand, setPitchBrand] = useState<string | null>(null);
   const seen = useRef(new Set<number>());
-  const pitchRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
     api
@@ -26,6 +36,7 @@ export function RunView({ runId }: { runId: string }) {
       .then((d) => {
         setData(d);
         setPitchBrand((cur) => cur ?? d.brands[0]?.brandEntityId ?? null);
+        setCity((cur) => cur ?? d.run.cities[0] ?? null);
       })
       .catch((e: Error) => setLoadError(e.message));
   }, [runId]);
@@ -45,84 +56,152 @@ export function RunView({ runId }: { runId: string }) {
     return () => source.close();
   }, [runId, refresh]);
 
+  const progress = useMemo(
+    () => (data ? deriveProgress(events, data.run.cities, data.run.status) : null),
+    [events, data],
+  );
+
   if (loadError) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-16">
-        <p className="text-decision">{loadError}</p>
-        <Link href="/" className="text-sm underline">
-          Back
+      <main className="mx-auto w-full max-w-3xl px-6 py-16">
+        <h1 className="display text-5xl">Run not found</h1>
+        <p className="mt-3 text-ink-soft">{loadError}. It may have been removed, or the link is incomplete.</p>
+        <Link href="/" className={buttonClass("secondary", "mt-6")}>
+          Start a new run
         </Link>
       </main>
     );
   }
-  if (!data) return <main className="mx-auto max-w-7xl px-4 py-10 text-muted">Loading run…</main>;
+  if (!data || !progress) {
+    return (
+      <main className="flex flex-1 flex-col lg:flex-row">
+        <div className="bg-ink lg:w-[21rem]" />
+        <p className="px-6 py-10 text-ink-soft">Loading the tour…</p>
+      </main>
+    );
+  }
 
   const { run } = data;
   const live = run.status === "running";
   const hasResults = data.brands.length > 0;
+  const latest = progress.lines.at(-1);
+
+  const openPitch = (id: string) => {
+    setPitchBrand(id);
+    setTab("pitch");
+  };
+  const openCity = (c: string) => {
+    setCity(c);
+    setTab("cities");
+  };
 
   return (
     <ProvenanceProvider>
-      <main className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 lg:grid-cols-[1fr_22rem]">
-        <div className="grid min-w-0 content-start gap-8">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{run.propertyName}</h1>
-              <StatusPill status={run.status} />
-            </div>
-            <div className="mt-1 text-sm text-muted">
-              {run.propertyType === "festival" ? "Festival" : "Artist tour"} · {run.artists.map((a) => a.query).join(", ")} · {run.cities.join(", ")}
-            </div>
-            <div className="mt-1 font-mono text-[11px] text-muted">
-              {run.model} · effort {run.effort} · {run.toolset} tools
-              {run.grounding && ` · grounding: ${run.grounding.checked - run.grounding.violations.length}/${run.grounding.checked} items matched to Qloo calls`}
-            </div>
-          </div>
+      <main className="flex flex-1 flex-col lg:flex-row">
+        <TourStack data={data} progress={progress} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+
+        <div className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
+          <header className="max-w-[72rem]">
+            <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
+            <p className="mt-1 text-sm text-ink-soft">
+              {run.cities.length} {run.cities.length === 1 ? "city" : "cities"} · {run.artists.map((a) => a.name ?? a.query).join(", ")}
+              {run.grounding && (
+                <>
+                  {" · "}
+                  <span className="text-evidence">
+                    {run.grounding.checked - run.grounding.violations.length} of {run.grounding.checked} figures traced to Qloo lookups
+                  </span>
+                </>
+              )}
+            </p>
+            {live && latest && (
+              <p className="mt-3 flex items-center gap-2 text-sm lg:hidden" aria-live="polite">
+                <span className="live-dot size-1.5 rounded-full bg-coral" aria-hidden="true" />
+                {latest.text}
+              </p>
+            )}
+          </header>
 
           {run.status === "needs_input" && run.pendingInput && <EntityPicker runId={run.id} input={run.pendingInput} onDone={refresh} />}
+
           {run.status === "error" && (
-            <Card className="border-decision/40 p-4 text-sm">
-              <div className="font-medium text-decision">The run stopped</div>
-              <div className="mt-1 text-muted">{run.error}</div>
-            </Card>
-          )}
-          {live && !hasResults && (
-            <Card className="p-6 text-sm text-muted">
-              The agent is resolving artists and querying Qloo. Results appear here when it submits its report (usually 1–2 minutes). Watch
-              the trace on the right.
-            </Card>
+            <div className="mt-6 max-w-2xl border-t-2 border-coral pt-3">
+              <p className="font-semibold">The run stopped before it finished.</p>
+              <p className="mt-1 text-sm text-ink-soft">{run.error}</p>
+              <Link href="/" className={buttonClass("secondary", "mt-4")}>
+                Start again
+              </Link>
+            </div>
           )}
 
-          {run.summary && (
-            <Card className="p-4">
-              <AgentLabel />
-              <p className="mt-1 leading-relaxed">{run.summary}</p>
-            </Card>
-          )}
+          {live && !hasResults && <Working text={latest?.text} />}
+
+          {run.summary && <Summary text={run.summary} />}
 
           {hasResults && (
             <>
-              <Shortlist
-                data={data}
-                onPitch={(id) => {
-                  setPitchBrand(id);
-                  pitchRef.current?.scrollIntoView({ behavior: "smooth" });
-                }}
-              />
-              <CityGrid data={data} />
-              <CityActivation data={data} />
-              <div ref={pitchRef}>
-                <PitchPackPanel data={data} brandId={pitchBrand} onBrandChange={setPitchBrand} onChanged={refresh} />
+              <div role="tablist" aria-label="Results" className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-rule">
+                {TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    id={`tab-${t.id}`}
+                    aria-selected={tab === t.id}
+                    aria-controls={`panel-${t.id}`}
+                    onClick={() => setTab(t.id)}
+                    className="-mb-px shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-ink-soft transition-colors hover:text-ink aria-selected:border-ink aria-selected:text-ink"
+                  >
+                    {t.label}
+                    {t.id === "pitch" && data.pitches.some((p) => p.approved) && <span className="ml-1.5 text-ok">· approved</span>}
+                  </button>
+                ))}
+              </div>
+              <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-6">
+                {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} />}
+                {tab === "grid" && <CityGrid data={data} onCity={openCity} />}
+                {tab === "cities" && city && <CityDetail data={data} city={city} onCity={setCity} />}
+                {tab === "pitch" && <PitchPackPanel data={data} brandId={pitchBrand} onBrandChange={setPitchBrand} onChanged={refresh} />}
               </div>
             </>
           )}
         </div>
-
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          <AgentTrace events={events} live={live} usage={run.usage} />
-        </aside>
       </main>
     </ProvenanceProvider>
+  );
+}
+
+function Summary({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="mt-5 max-w-[62ch]">
+      <p className={`leading-relaxed ${open ? "" : "line-clamp-3"}`}>
+        <span className="mr-1.5">
+          <AgentLabel />
+        </span>
+        {text}
+      </p>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="mt-1 text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+        {open ? "Show less" : "Read the full summary"}
+      </button>
+    </section>
+  );
+}
+
+function Working({ text }: { text?: string }) {
+  return (
+    <section className="mt-10 max-w-2xl">
+      <p className="display text-[3.2rem] sm:text-[4rem]">Printing the tour</p>
+      <p className="mt-3 text-lg leading-relaxed text-ink-soft">
+        Overlap is reading Qloo&apos;s taste data city by city. The shortlist appears once every number has been checked, usually in one to two
+        minutes.
+      </p>
+      {text && (
+        <p className="mt-6 flex items-center gap-2 font-medium">
+          <span className="live-dot size-2 rounded-full bg-coral" aria-hidden="true" />
+          {text}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -138,38 +217,39 @@ function EntityPicker({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <Card className="border-warn/50 p-4">
-      <div className="text-sm font-semibold">Did you mean…</div>
-      <p className="mt-1 text-sm text-muted">{input.question}</p>
-      <div className="mt-3 grid gap-2">
+    <section className="mt-8 max-w-2xl">
+      <h2 className="display text-[2.4rem]">Did you mean…</h2>
+      <p className="mt-2 text-ink-soft">{input.question}</p>
+      <ul className="mt-4 divide-y divide-rule border-y border-ink">
         {input.candidates.map((c) => (
-          <button
-            key={c.entity_id}
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await api.resolve(runId, c.entity_id, c.name);
-                onDone();
-              } catch (e) {
-                setError((e as Error).message);
-                setBusy(false);
-              }
-            }}
-            className="rounded-md border border-line p-3 text-left hover:border-foreground disabled:opacity-50"
-          >
-            <div className="font-medium">{c.name}</div>
-            {c.description && <div className="text-xs text-muted">{c.description}</div>}
-            <div className="font-mono text-[10px] text-muted">{c.entity_id}</div>
-          </button>
+          <li key={c.entity_id}>
+            <button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await api.resolve(runId, c.entity_id, c.name);
+                  onDone();
+                } catch (e) {
+                  setError((e as Error).message);
+                  setBusy(false);
+                }
+              }}
+              className="group flex w-full items-center justify-between gap-4 px-2 py-3 text-left transition-colors hover:bg-ink hover:text-on-ink disabled:opacity-40"
+            >
+              <span>
+                <span className="block font-semibold">{c.name}</span>
+                {c.description && <span className="block text-sm text-ink-soft group-hover:text-on-ink-soft">{c.description}</span>}
+              </span>
+              <span className="text-sm font-semibold text-coral-ink group-hover:text-coral">Use this</span>
+            </button>
+          </li>
         ))}
-      </div>
-      {error && <p className="mt-2 text-sm text-decision">{error}</p>}
-      <div className="mt-3">
-        <Link href="/">
-          <Button variant="ghost">None of these: start over</Button>
-        </Link>
-      </div>
-    </Card>
+      </ul>
+      {error && <p className="mt-3 text-sm text-coral-ink">{error}</p>}
+      <Link href="/" className={buttonClass("ghost", "mt-3 px-0")}>
+        None of these: start over
+      </Link>
+    </section>
   );
 }

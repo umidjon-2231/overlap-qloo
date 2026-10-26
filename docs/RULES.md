@@ -4,7 +4,7 @@ Rules the product, the agent and contributors must follow. Prompts in `apps/api/
 
 ## Product principles
 
-1. **Qloo is the evidence, the agent is the analyst.** Every figure traces to a logged Qloo call; interpretation is visibly labelled ("Qloo says" vs "Agent suggests").
+1. **Qloo is the evidence, the agent is the analyst.** Every figure traces to a logged Qloo call; interpretation is visibly labelled ("Qloo says" vs "Overlap suggests"). The UI shows the agent as a black box: short plain lines of what it is doing, never its reasoning text or tool names (those stay in the provenance drawer and the database).
 2. **Human approves, agent drafts.** Nothing is sent, booked or committed by the app. Export unlocks only after approval.
 3. **Honest about coverage.** Empty or thin data is shown as a badge, never filled by the model.
 4. **Aggregate taste only.** No personal data is collected or sent to Qloo.
