@@ -15,9 +15,11 @@ const FONTS = {
 const MARK = asset("mark-dark.png");
 const MONO = asset("fonts/JetBrainsMono-Regular.ttf");
 
-/** Data figures set in mono: call references and ranks (#1186, #3), decimals (0.931), signed skews (+0.43).
-    Plain prose numbers ("a 20-minute call") stay in the body face. Capturing group for split(). */
-const NUMERIC = /((?:call |Qloo )?#\d+|[+-]?\d+\.\d+)/g;
+/** One rule for figures: in the Evidence list every rank, call reference and decimal is tabular mono;
+    in prose (including the sendable email) only call references are, so no sentence mixes faces.
+    Capturing groups for split(). */
+const EVIDENCE_FIGURES = /((?:call |Qloo )?#\d+|[+-]?\d+\.\d+)/g;
+const CALL_REFS = /((?:call |Qloo )#\d+)/g;
 
 const INK = "#111216";
 const INK_SOFT = "#5d5f66";
@@ -71,16 +73,19 @@ export function renderPitchPdf(title: string, markdown: string, approvedAt?: Dat
   doc.x = M;
   doc.y = bandH + 30;
 
+  // The current top-level section, which decides how figures are set.
+  let section = "";
   // Inline **bold** as runs of SemiBold within a paragraph.
-  const rich = (text: string, opts: PDFKit.Mixins.TextOptions & { x?: number; size?: number; color?: string } = {}) => {
+  const rich =(text: string, opts: PDFKit.Mixins.TextOptions & { x?: number; size?: number; color?: string } = {}) => {
     const { x = doc.x, size = 10, color = INK, ...rest } = opts;
-    // Runs: **bold** spans, and within every span the figures (affinities, ranks, call IDs) in tabular mono.
+    // Runs: **bold** spans, and within them the figures in tabular mono (see EVIDENCE_FIGURES / CALL_REFS).
+    const figures = /^evidence/i.test(section) ? EVIDENCE_FIGURES : CALL_REFS;
     const segs = clean(text)
       .split(/\*\*(.+?)\*\*/g)
       .flatMap((s, i) =>
         s
           .replace(/\*(.+?)\*/g, "$1")
-          .split(NUMERIC)
+          .split(figures)
           .map((part, j) => ({ s: part, font: j % 2 === 1 ? "mono" : i % 2 === 1 ? "bold" : "body" })),
       )
       .filter((p) => p.s);
@@ -104,6 +109,7 @@ export function renderPitchPdf(title: string, markdown: string, approvedAt?: Dat
         case "heading": {
           const h = t as Tokens.Heading;
           if (h.depth <= 2) {
+            section = clean(h.text);
             ensure(70);
             doc.moveDown(0.8);
             const y = doc.y;

@@ -87,6 +87,8 @@ export function TourRoute(props: TourRouteProps) {
 function TourRouteCanvas(props: TourRouteProps) {
   const anchors = useRef<Anchors>(new Map());
   const { here, visited } = props;
+  // On a phone the band is too narrow for every city's tags; only the bus's city shows them.
+  const [narrow] = useState(() => window.matchMedia("(max-width: 639px)").matches);
   const bind = (key: string) => (el: HTMLElement | null) => {
     if (el) anchors.current.set(key, el);
     else anchors.current.delete(key);
@@ -98,7 +100,8 @@ function TourRouteCanvas(props: TourRouteProps) {
       </Canvas>
       <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
         {props.cities.map((city) => {
-          const tags = visited.includes(city) ? (props.cityBrands[city] ?? []).slice(0, here === city ? 2 : 1) : [];
+          const tags =
+            visited.includes(city) && (!narrow || here === city) ? (props.cityBrands[city] ?? []).slice(0, here === city ? 2 : 1) : [];
           return (
             <div key={city}>
               <span ref={bind(`label:${city}`)} className="absolute left-0 top-0 opacity-0 will-change-transform">
@@ -153,8 +156,9 @@ function Scene({
   }, [visitOrder, cities, done]);
 
   const offset = useMemo(() => new THREE.Vector3(6, 11, 12), []);
-  const followZoom = Math.min(size.width / (SPACING * (size.width < 640 ? 2.5 : 3.8)), size.height / 6.2);
-  const fitZoom = Math.min(followZoom, size.width / (layout.length * 0.86 + 4));
+  const followZoom = Math.min(size.width / (SPACING * (size.width < 640 ? 2.5 : 3.8)), size.height / 6.9);
+  // The closing overview fits the whole route with margin at both ends and the tallest skylines under the top rule.
+  const fitZoom = Math.min(followZoom, size.width / (layout.length * 0.86 + 6.5), size.height / 7.4);
 
   useFrame((state, dt) => {
     const n = nav.current;
@@ -217,10 +221,10 @@ function Scene({
     const cam = camRef.current;
     if (cam) {
       const want = overview
-        ? new THREE.Vector3((layout.stops[0]!.x + layout.stops.at(-1)!.x) / 2, 0, 0)
+        ? new THREE.Vector3((layout.stops[0]!.x + layout.stops.at(-1)!.x) / 2, 0, -1.1)
         : bus
           ? // Look a little behind the road so the skylines and tags sit inside the band.
-            bus.position.clone().setY(0).add(new THREE.Vector3(0, 0, -0.55))
+            bus.position.clone().setY(0).add(new THREE.Vector3(0, 0, -1.15))
           : focus.current;
       focus.current.lerp(want, still ? 1 : 1 - Math.exp(-step * 2.4));
       cam.position.copy(focus.current).add(offset);
