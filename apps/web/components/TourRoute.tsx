@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { CityState } from "@/lib/progress";
+import { cityParts } from "./landmarks";
 import { PressLoop } from "./PressLoop";
 
 /* The run as a tour: the seller's cities become stops on a printed route, and the Overlap tour bus
@@ -317,27 +318,17 @@ function Stop({ position, state, here, still }: { position: THREE.Vector3; state
   );
 }
 
-/** A few flat blocks behind each stop, shaped from the city's name so every city keeps its own skyline.
+/** The city behind each stop: its landmark when Overlap knows one, else blocks shaped from its name.
     Outline only while queued, coral outline while the agent is there, solid ink once printed. */
 function Skyline({ city, position, state }: { city: string; position: THREE.Vector3; state: CityState }) {
-  const blocks = useMemo(() => {
-    let h = 2166136261;
-    for (const ch of city) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-    const rand = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) % 1000) / 1000;
-    const count = 4 + Math.floor(rand() * 3);
-    return Array.from({ length: count }, (_, i) => {
-      const w = 0.28 + rand() * 0.22;
-      return { x: -0.95 + (i * 1.9) / (count - 1), h: 0.35 + rand() * 1.15, w, d: 0.3 + rand() * 0.25 };
-    });
-  }, [city]);
-  const geos = useMemo(() => blocks.map((b) => new THREE.BoxGeometry(b.w, b.h, b.d)), [blocks]);
-  const edges = useMemo(() => geos.map((g) => new THREE.EdgesGeometry(g)), [geos]);
+  const parts = useMemo(() => cityParts(city), [city]);
+  const edges = useMemo(() => parts.map((p) => new THREE.EdgesGeometry(p.geo, 28)), [parts]);
   useEffect(
     () => () => {
-      geos.forEach((g) => g.dispose());
+      parts.forEach((p) => p.geo.dispose());
       edges.forEach((g) => g.dispose());
     },
-    [geos, edges],
+    [parts, edges],
   );
   // The ink layer prints up from the ground over the outline, like a pull of the squeegee.
   const ink = useRef<THREE.Group>(null);
@@ -354,10 +345,10 @@ function Skyline({ city, position, state }: { city: string; position: THREE.Vect
   const line = state === "working" ? CORAL : INK;
   return (
     <group position={[position.x, 0, position.z - 1.35]}>
-      {blocks.map((b, i) => (
-        <group key={i} position={[b.x, b.h / 2, (i % 2) * 0.22]}>
-          <mesh geometry={geos[i]}>
-            <meshBasicMaterial color={PAPER} />
+      {parts.map((p, i) => (
+        <group key={i} position={p.at} rotation={p.rot ?? [0, 0, 0]}>
+          <mesh geometry={p.geo}>
+            <meshBasicMaterial color={PAPER} side={THREE.DoubleSide} />
           </mesh>
           <lineSegments geometry={edges[i]}>
             <lineBasicMaterial color={line} />
@@ -365,10 +356,10 @@ function Skyline({ city, position, state }: { city: string; position: THREE.Vect
         </group>
       ))}
       <group ref={ink} scale={[1, 0, 1]}>
-        {blocks.map((b, i) => (
-          <group key={i} position={[b.x, b.h / 2, (i % 2) * 0.22]} scale={1.004}>
-            <mesh geometry={geos[i]}>
-              <meshBasicMaterial color={INK} />
+        {parts.map((p, i) => (
+          <group key={i} position={p.at} rotation={p.rot ?? [0, 0, 0]} scale={1.004}>
+            <mesh geometry={p.geo}>
+              <meshBasicMaterial color={INK} side={THREE.DoubleSide} />
             </mesh>
             <lineSegments geometry={edges[i]}>
               <lineBasicMaterial color={PAPER} />

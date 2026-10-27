@@ -177,7 +177,10 @@ export function RunView({ runId }: { runId: string }) {
   return (
     <ProvenanceProvider>
       <main className="flex flex-1 flex-col lg:flex-row">
-        <TourStack data={view} progress={shown} quiet={staging} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+        {/* The ink column runs the page's full height; the rail sticks inside it. */}
+        <div className="bg-ink lg:shrink-0">
+          <TourStack data={view} progress={shown} quiet={staging} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+        </div>
 
         <div className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
           <header className="max-w-[72rem]">

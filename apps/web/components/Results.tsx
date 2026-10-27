@@ -86,7 +86,6 @@ function BrandRow({
   onPitch: (id: string) => void;
   onCity: (city: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const top = rank === 1;
   const q = brand.evidence.qloo;
   return (
@@ -136,26 +135,15 @@ function BrandRow({
           })}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        {q.knownPartnerships?.length > 0 && (
+          <p className={`mt-3 max-w-[72ch] text-sm ${top ? "text-ink" : "text-ink-soft"}`}>Known partners: {q.knownPartnerships.slice(0, 4).join(", ")}</p>
+        )}
+
+        <div className="mt-4">
           <Button variant="secondary" onClick={() => onPitch(brand.brandEntityId)}>
             Open pitch pack
           </Button>
-          <button type="button" className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline" onClick={() => setOpen(!open)} aria-expanded={open}>
-            {open ? "Hide" : "Show"} Qloo details
-          </button>
         </div>
-        {open && (
-          <dl className="mt-3 grid max-w-[72ch] grid-cols-[7.5rem_1fr] gap-y-1 border-t border-current/20 pt-3 font-mono text-[11px]">
-            <dt className="opacity-70">entity_id</dt>
-            <dd className="break-all">{brand.brandEntityId}</dd>
-            <dt className="opacity-70">tags</dt>
-            <dd className="break-all">{q.categories?.join(", ") || "–"}</dd>
-            <dt className="opacity-70">industries</dt>
-            <dd>{q.industries?.join(", ") || "–"}</dd>
-            <dt className="opacity-70">partnerships</dt>
-            <dd>{q.knownPartnerships?.join(", ") || "–"}</dd>
-          </dl>
-        )}
       </div>
 
       <div className="col-start-2 mt-3 flex items-baseline gap-2 sm:col-start-3 sm:mt-0 sm:flex-col sm:items-end sm:gap-0 sm:text-right" title="Overlap score = Qloo audience affinity × 100">

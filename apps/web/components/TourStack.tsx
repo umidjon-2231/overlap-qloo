@@ -161,8 +161,8 @@ function RunLog({
           );
         })}
       </ol>
-      <p className="mt-3 font-mono text-[11px] text-on-ink-soft tnum">
-        {printed}/{total} cities · {lookups} Qloo lookups{seconds != null && !live ? ` · ${Math.round(seconds)} s` : ""}
+      <p className="mt-3 text-xs text-on-ink-soft tnum">
+        {printed} of {total} cities · {lookups} Qloo lookups{seconds != null && !live ? ` · ${Math.round(seconds)} s` : ""}
       </p>
     </div>
   );
