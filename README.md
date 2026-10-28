@@ -10,9 +10,9 @@ Ask a language model which brands to pitch and you get confident, generic names;
 
 Overlap is a sell-side sponsorship agent for artist tours and festivals. A sponsorship seller enters a property (artists, cities, brand categories). A Claude agent works through Qloo's taste graph: it finds brands the fans already love, checks how each city changes the picture, maps where fans gather, finds local activation partners near them, and drafts a pitch the seller edits and approves before anything leaves the app.
 
-Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Product spec: [`PRODUCT.md`](PRODUCT.md) · Known limits: [`LIMITATIONS.md`](LIMITATIONS.md)
+Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Known limits: [`LIMITATIONS.md`](LIMITATIONS.md)
 
-Docs: [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Rules](docs/RULES.md) · [Qloo API notes](docs/QLOO_API.md) · [Development](docs/DEVELOPMENT.md) · [Bake-off](docs/BAKEOFF.md) · [Design system](apps/web/DESIGN.md) · [Submission kit](docs/SUBMISSION.md)
+Docs: [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Rules](docs/RULES.md) · [Qloo API notes](docs/QLOO_API.md) · [Development](docs/DEVELOPMENT.md) · [Design system](apps/web/DESIGN.md)
 
 ## The problem
 
@@ -88,7 +88,7 @@ Pitch: Claude (Sonnet 5.5) drafts from an evidence pack rebuilt from logged call
 - **Honest coverage.** Thin or empty data shows as such, never filled by the model.
 - **Aggregate taste only.** Inputs are entity IDs, tags and cities. No personal data is collected or sent to Qloo.
 
-Model choice came from a measured bake-off (groundedness, tool use, cost, latency): [`docs/BAKEOFF.md`](docs/BAKEOFF.md). A run costs about one cent in Claude usage ($0.007–0.014 on the production example runs, estimated from recorded token usage) and 18–51 Qloo lookups; a pitch about $0.03.
+Model choice came from a measured bake-off (groundedness, tool use, cost, latency), run with `pnpm bakeoff`; see [Decisions](docs/DECISIONS.md). A run costs about one cent in Claude usage ($0.007–0.014 on the production example runs, estimated from recorded token usage) and 18–51 Qloo lookups; a pitch about $0.03.
 
 ## Layout
 
@@ -124,7 +124,7 @@ Keys live only in `.env` and are read by the API; the browser never sees them. Q
 
 ## Production
 
-Live at **https://overlap.u.co.uz**: a single VPS running Docker Compose (Postgres, API, web) behind a reverse proxy with a Let's Encrypt certificate. GitHub Actions typechecks and deploys on push to `main` (`.github/workflows/deploy.yml` → `scripts/deploy.sh`). See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+Live at **https://overlap.u.co.uz**: a single VPS running Docker Compose (Postgres, API, web) behind a reverse proxy with a Let's Encrypt certificate. GitHub Actions typechecks and deploys on push to `main`. See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## What was built during the submission period
 

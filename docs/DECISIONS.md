@@ -37,7 +37,7 @@ Qloo's localised rankings omit national leaders. Shown as "national fit" in the 
 The agent cites call IDs; the server looks up every value and runs a grounding check. The pitch writer gets an evidence pack rebuilt from logged calls (one call ID per figure), not the agent's notes.
 
 ### D11. Agent model: Haiku 5.5, effort high, business tools (2026-10-15)
-The bake-off (`docs/BAKEOFF.md`) showed 0 grounding violations and full completeness at about $0.01 per run, versus about $0.17 for Sonnet. Haiku at low effort invents IDs; raw endpoint tools cause invalid calls for both models.
+The bake-off (`pnpm bakeoff`) showed 0 grounding violations and full completeness at about $0.01 per run, versus about $0.17 for Sonnet. Haiku at low effort invents IDs; raw endpoint tools cause invalid calls for both models.
 
 ### D12. Pitch model: Sonnet 5.5, effort high (2026-10-15)
 The pitch is the deliverable a seller reads and sends; it runs only on demand (about $0.03).

@@ -9,7 +9,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   API_PORT: z.coerce.number().int().default(8787),
   WEB_ORIGIN: z.string().default("http://localhost:3000"),
-  // Defaults chosen by the bake-off (docs/BAKEOFF.md): Haiku 5.5 at high effort with business tools
+  // Defaults chosen by the bake-off (`pnpm bakeoff`): Haiku 5.5 at high effort with business tools
   // matched Sonnet's groundedness and completeness at ~1/15 of the cost.
   AGENT_MODEL: z.string().default("claude-haiku-5-5"),
   AGENT_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("high"),

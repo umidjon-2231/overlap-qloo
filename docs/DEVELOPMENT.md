@@ -31,7 +31,7 @@ Blender 5.2. The `.blend` files are not committed.
 | `QLOO_API_KEY`, `QLOO_API_URL` | – / hackathon URL | API only |
 | `CLAUDE_API_KEY` (or `ANTHROPIC_API_KEY`) | – | API only |
 | `DATABASE_URL` | – | set by compose in production |
-| `AGENT_MODEL`, `AGENT_EFFORT`, `AGENT_TOOLSET` | `claude-haiku-5-5`, `high`, `business` | see `docs/BAKEOFF.md` |
+| `AGENT_MODEL`, `AGENT_EFFORT`, `AGENT_TOOLSET` | `claude-haiku-5-5`, `high`, `business` | chosen by the bake-off (`pnpm bakeoff`) |
 | `PITCH_MODEL` | `claude-sonnet-5-5` | |
 | `RUN_TOOL_CALL_LIMIT` | 30 | raw toolset gets 2× |
 | `RUN_QLOO_CALL_LIMIT` | 120 | network calls per run |
@@ -60,9 +60,9 @@ Blender 5.2. The `.blend` files are not committed.
 
 https://overlap.u.co.uz: a single VPS running docker compose; GitHub Actions deploys on push to main.
 
-- **Proxy:** Apache on the host terminates HTTPS (Let's Encrypt) and proxies `/api/*` to the API and everything else to the web app (example vhost: `deploy/apache/overlap.u.co.uz.conf`).
+- **Proxy:** Apache on the host terminates HTTPS (Let's Encrypt) and proxies `/api/*` to the API and everything else to the web app.
 - **Stack:** `docker compose up -d --build` with the server's `.env` (`DOMAIN`, `POSTGRES_PASSWORD`, keys, `PRESET_CACHE_HOURS=720`). The API container applies migrations on start. Postgres has no host port.
-- **Auto deploy:** every push to `main` (except docs/Markdown/brand) runs `.github/workflows/deploy.yml`: typecheck, then `scripts/deploy.sh` on the server, which fast-forwards to `origin/main`, rebuilds and waits for health. It can also be run by hand from the Actions tab.
+- **Auto deploy:** every push to `main` (except docs/Markdown/brand) runs a GitHub Actions workflow: typecheck, then a deploy script on the server that fast-forwards to `main`, rebuilds and waits for health. (The workflow and server scripts are kept in the private deployment repository.)
 - The demo must stay up through judging (Nov 2–16, 2026). Example runs stay cached for 30 days on the server; re-warm with `docker compose exec api pnpm exec tsx src/scripts/run-agent.ts <presetId>`.
 
 ## Cost reference

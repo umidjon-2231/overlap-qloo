@@ -1,7 +1,7 @@
 # Production stack: web (Next.js) + api (Hono) → Postgres.
 # The host's Apache terminates TLS (certbot) and proxies to the loopback ports below:
 #   /api/* → 127.0.0.1:3071 (prefix stripped), everything else → 127.0.0.1:3070.
-# See deploy/apache/overlap.u.co.uz.conf. Usage on the server:
+# Usage on the server:
 #   cp .env.example .env   # fill QLOO_API_KEY, CLAUDE_API_KEY, DOMAIN, POSTGRES_PASSWORD
 #   docker compose up -d --build
 services:
