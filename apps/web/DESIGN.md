@@ -242,7 +242,7 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 - **Display stack** (800, 1.75rem mobile / 2.25rem desktop, 0.92): every city line on the rail. One size for the whole stack.
 - **Headline** (800 display caps, 1.9rem): section titles (See an example, Or try your own tour, Brands to pitch, Brand by city, With Qloo vs without, Pitch for <Brand>); also the step numerals on the home page, the example names on their cards and the rank numeral on brand cards. Display caps at 1.6rem for sub-sections inside a city; 2.4rem for the picker question.
 - **Fit score** (800 display, 3rem, tabular): the fan fit number on each brand card, Screenprint Blue (Ink on the coral #1 card), labelled "Top fan fit" on #1, otherwise Excellent fit (90 and up), Strong fit (80 and up) or Good fit.
-- **Title** (display wide, 700, 1.5rem to 2.4rem, leading tight): the run title h1 (2rem / 2.4rem), the short answer ("Safest bets: …", 1.45rem), brand names on the brand cards (1.5rem), the brand heading in the pitch (1.6rem).
+- **Title** (display wide, 700, 1.5rem to 2.4rem, leading tight): the run title h1 (2rem / 2.4rem), the short answer ("Lead with …", 1.45rem), brand names on the brand cards (1.5rem), the brand heading in the pitch (1.6rem).
 - **Body** (Inter 400, 1rem, 1.625): summaries and explanatory copy, held to 60 to 72ch. Pitch prose runs at 0.95rem, line-height 1.6, 72ch.
 - **Body small** (Inter, 0.875rem): most UI: buttons and tabs (600), list rows, hints.
 - **Label** (Inter 600, 11px, 0.06em, uppercase): run-in provenance labels ("Qloo says", "Overlap suggests") at the start of a sentence, and the status pill.
@@ -257,7 +257,7 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 
 A shell-and-work split while the agent works. The Ink header is 56px tall with the logo left and "New run" right. While a run works or replays, a 336px Ink rail sits on the left at the lg breakpoint (1024px), sticky to the viewport below the header and scrolling internally; the Paper work area fills the rest with 16px side padding (32px from sm). Below lg the rail collapses to a horizontally scrolling strip of city lines above the work area. Finished results drop the rail and take the full width.
 
-Finished results read top to bottom: the run name, a one-line subtitle ("5 cities · Phoebe Bridgers · ✓ every brand and venue checked against Qloo", the check in blue), the ghost button "▶ Replay how Overlap did it", the short answer ("Safest bets: …"), "Read Overlap's notes" (the agent's summary, folded), then a single tab row (Brands, Cities, Compare). A pitch opens as its own view from a brand, with "← Back to all brands". Content is capped at 72rem for the header and 62 to 80ch for prose. The home page is one column capped at 64rem: the headline, three numbered steps, "See an example" as three Ink cards in a row from md, then "Or try your own tour" with the form.
+Finished results read top to bottom: the run name, a one-line subtitle ("5 cities · Phoebe Bridgers · ✓ every brand and venue checked against Qloo", the check in blue), the ghost button "▶ Replay how Overlap did it", the short answer ("Lead with …, then …", with a "See the comparison →" line), "Read Overlap's notes" (the agent's summary, folded), then a single tab row (Brands, Cities, Compare). A pitch opens as its own view from a brand, with "← Back to all brands". Content is capped at 72rem for the header and 62 to 80ch for prose. The home page is one column capped at 64rem: the headline, three numbered steps, "See an example" as three Ink cards in a row from md, then "Or try your own tour" with the form.
 
 Rhythm runs on a 4px base: 4 and 8px inside controls and chip clusters, 16px between related blocks, 24px between a tab row and its panel, 32 to 48px between sections. Lists are full-bleed rows separated by rules, not padded cards.
 
@@ -294,7 +294,7 @@ Printed tags: compact, flat, semibold.
 ### Chips
 - **Toggle chips** (brand types under "More options", the city switcher): 1px Ink outline, 2px corners; pressed reverses to Paper on Ink; hover on Paper takes Washed Paper.
 - **Segmented control** (Tour / Festival, under "More options"): two square buttons in one 1px Ink frame, pressed reverses.
-- **Evidence chips** (Qloo call references, "What these fans like" tags, ranked cities): Screenprint Blue mono or sans on Evidence Wash, 2px corners; call chips reverse to Paper on Blue on hover and open the provenance drawer. On a Coral field they print as Paper on Ink instead.
+- **Evidence chips** (Qloo call references, crowd tags (grouped: music, books/film/TV, places), ranked cities): Screenprint Blue mono or sans on Evidence Wash, 2px corners; call chips reverse to Paper on Blue on hover and open the provenance drawer. On a Coral field they print as Paper on Ink instead.
 
 ### Cards / Containers
 There are no cards. Containers are flat fields:

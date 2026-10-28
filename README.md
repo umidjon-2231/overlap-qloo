@@ -6,7 +6,7 @@
 
 ![Overlap results: the short answer and brands ranked by fan fit](docs/img/results.png)
 
-Ask a language model which brands to pitch and you get confident, generic names; Overlap's picks come from Qloo's taste graph, and one click shows which of the model's own picks have no Qloo evidence and which strong fits it missed.
+Ask a language model which brands to pitch and you get confident, generic names; Overlap's picks come from Qloo's taste graph, and one click scores the model's own picks against the same fans in Qloo, so you see how far they fall short and which strong fits it missed.
 
 Overlap is a sell-side sponsorship agent for artist tours and festivals. A sponsorship seller enters a property (artists, cities, brand categories). A Claude agent works through Qloo's taste graph: it finds brands the fans already love, checks how each city changes the picture, maps where fans gather, finds local activation partners near them, and drafts a pitch the seller edits and approves before anything leaves the app.
 
@@ -24,10 +24,10 @@ The **sponsorship seller** at a promoter, festival, venue group or artist manage
 
 ## What the seller gets
 
-1. **The short answer**: the safest bets, meaning brands that rank in the top 3 for their type in most of the tour's cities.
+1. **The short answer**: lead with the fans' #1 brand, then the brands that rank in the top 3 for their type in most of the tour's cities, plus a one-line "without Qloo" score comparison.
 2. **Brands**: brands ranked by national fan fit (Qloo affinity × 100). Each card has an "Overlap suggests" note, the brand's rank among its type in each city ("Rank among Fashion brands: Los Angeles #1, Seattle #2", or "a national fit" where no city's local list has it), and "Show the data", which opens the Qloo lookup behind it.
-3. **Cities**: for each city, your brands' local ranks, the crowd in plain English, where fans gather (the biggest fan area and a hidden fan pocket) and local partner venues near the fans with an idea for each.
-4. **Compare**: a brand-by-city grid, and "With Qloo vs without": the same model asked the same question with no Qloo data, showing which of its picks the taste graph backs up and which strong Qloo picks it missed.
+3. **Cities**: for each city, your brands' local ranks, the crowd in plain English with their music, books/film/TV and places tags, where fans gather (the biggest fan area and a hidden fan pocket) and local partner venues near the fans with an idea for each.
+4. **Compare**: a brand-by-city grid, and "With Qloo vs without": the same model asked the same question with no Qloo data, with each of its picks looked up in Qloo and scored against the same fans (average fan fit vs Overlap's list), and the strong Qloo picks it missed.
 5. **A pitch** for any brand: the pitch, why this brand, city by city, activations, measurement plan, a sendable outreach email and internal seller notes. The seller edits and approves; only then can it be opened as an email, downloaded as a branded PDF or copied as text.
 
 While the agent works, the seller watches one thing: their own tour as a route, with the Overlap tour bus driving to each city as the agent reaches it, each city printing in as its evidence is read, and the brands that rank there popping up. The agent is shown as a black box: one plain line of what it is doing, never its internal reasoning.
