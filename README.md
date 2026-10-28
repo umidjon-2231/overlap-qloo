@@ -2,7 +2,7 @@
 
 > Tell us your tour. We tell you which brands to pitch, in which cities, and why.
 
-**Live demo: https://overlap.u.co.uz** (no login; open an example to replay how Overlap worked, then explore the results).
+**Live demo: https://overlap.u.co.uz** (no login; open an example to replay how Overlap worked, then explore the results). **Demo video:** [`docs/video/overlap-demo.mp4`](docs/video/overlap-demo.mp4) (1:50).
 
 ![Overlap results: the short answer and brands ranked by fan fit](docs/img/results.png)
 
