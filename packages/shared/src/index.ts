@@ -44,7 +44,7 @@ export type PlaceKind = keyof typeof PLACE_KINDS;
 
 /** Qloo safe use: never infer sensitive traits (orientation, religion, politics, health) about an audience. */
 const SENSITIVE_TAG =
-  /\b(queer|lgbt\w*|gay|lesbian|bisexual|trans\w*|religio\w*|christian|muslim|islam\w*|jewish|hindu|buddhis\w*|politic\w*|conservative|liberal|health|disabilit\w*|mental)\b/i;
+  /\b(queer|lgbt\w*|gay|lesbian|bisexual|trans\w*|religio\w*|christian|muslim|islam\w*|jewish|hindu|buddhis\w*|politic\w*|conservative|liberal|feminis\w*|social justice|race|racial|racism|ethnic\w*|health|disabilit\w*|mental)\b/i;
 
 export const isSensitiveTag = (tag: { name: string; tagId?: string }) => SENSITIVE_TAG.test(`${tag.name} ${tag.tagId ?? ""}`);
 

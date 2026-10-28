@@ -63,12 +63,13 @@ export async function pitchEvidence(runId: string, brandId: string) {
       rankCallId = (pe.localFitCallIds ?? []).find((id) => items(id)[cell.rankInCity! - 1]?.entityId === brandId) ?? null;
     }
 
-    let taste: { tags: string[]; callId: number } | null = null;
+    // Newer runs log one tag call per family (music, media, places); older runs log a single unfiltered call.
+    const taste: { tags: string[]; callId: number }[] = [];
     for (const id of pe.crowdCallIds ?? []) {
       const s = calls.get(id)?.resultSummary as Summary;
-      if (Array.isArray(s?.items) && !taste) {
-        const safe = s.items.filter((t: Summary) => !isSensitiveTag(t));
-        taste = { tags: safe.slice(0, 8).map((t: Summary) => t.name), callId: id };
+      if (Array.isArray(s?.items)) {
+        const safe = s.items.filter((t: Summary) => !isSensitiveTag(t) && String(t.name).toLowerCase() !== city.toLowerCase());
+        if (safe.length) taste.push({ tags: safe.slice(0, taste.length ? 4 : 8).map((t: Summary) => t.name), callId: id });
       }
       if (s?.age && !demographics) demographics = { age: s.age, gender: s.gender, callId: id };
     }
@@ -81,7 +82,7 @@ export async function pitchEvidence(runId: string, brandId: string) {
         cell?.rankInCity != null
           ? { rank: cell.rankInCity, outOf: LOCAL_DEPTH, category: categoryLabel, callId: rankCallId }
           : null,
-      cityTasteTags: taste,
+      cityTasteTags: taste.length ? taste : null,
       partnerPlaces: partners
         .filter((p) => p.city === city)
         .map((p) => {

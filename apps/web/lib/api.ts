@@ -52,7 +52,9 @@ export interface Run {
 export interface LlmOnly {
   model: string;
   createdAt: string;
-  picks: { name: string; category: string; why: string; onShortlist: number | null }[];
+  picks: { name: string; category: string; why: string; onShortlist: number | null; qlooAffinity?: number | null; qlooCallId?: number | null }[];
+  /** True once every pick was looked up in Qloo. */
+  scored?: boolean;
   missed: { rank: number; name: string; affinity: number | null }[];
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { BRAND_CATEGORIES, isSensitiveTag, type BrandCategory } from "@overlap/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, type BrandMatch, type CityProfile, type HeatCell, type Partner, type RunPayload } from "@/lib/api";
 import { CallLink } from "./Provenance";
 import { AgentLabel, Button, CoverageBadge, CoverageMark, SectionTitle, fmt } from "./ui";
@@ -18,7 +18,7 @@ function strongCities(data: RunPayload, brandId: string) {
 }
 
 /** The plain-English answer: brands that fans love and that also lead in most of the tour's cities. */
-export function BestBets({ data }: { data: RunPayload }) {
+export function BestBets({ data, onCompare }: { data: RunPayload; onCompare: () => void }) {
   const half = Math.ceil(data.run.cities.length / 2);
   const bets = data.brands
     .map((b, i) => ({ b, i, top3: strongCities(data, b.brandEntityId).filter((x) => x.rank <= 3).length }))
@@ -27,7 +27,7 @@ export function BestBets({ data }: { data: RunPayload }) {
     .slice(0, 3);
   const top = data.brands[0];
   if (!top) return null;
-  const names = (bets.length ? bets.map((x) => x.b) : [top]).map((b) => (
+  const link = (b: BrandMatch) => (
     <button
       key={b.brandEntityId}
       type="button"
@@ -35,20 +35,28 @@ export function BestBets({ data }: { data: RunPayload }) {
       className="underline decoration-coral decoration-2 underline-offset-4 hover:text-coral-ink">
       {b.brandName}
     </button>
-  ));
+  );
+  // The #1 brand by fan fit always leads, so the answer and the ranked list below never disagree.
+  const local = bets.map((x) => x.b).filter((b) => b.brandEntityId !== top.brandEntityId);
+  const topIsLocal = local.length < bets.length;
+  const names = local.map(link);
   const joined = names.flatMap((n, i) => (i === 0 ? [n] : [i === names.length - 1 ? " and " : ", ", n]));
   const where = data.run.cities.length === 1 ? `in ${data.run.cities[0]}` : "in most of your cities";
   return (
     <section className="mt-6 max-w-[62ch] border-l-4 border-coral pl-4">
       <p className="text-xs font-bold uppercase tracking-[0.08em] text-ink-soft">The short answer</p>
       <p className="display-wide mt-1 text-[1.45rem] leading-snug">
-        {bets.length ? <>Safest bets: {joined}.</> : <>Lead with {joined}.</>}
+        Lead with {link(top)}{local.length ? <>, then {joined}.</> : "."}
       </p>
       <p className="mt-1 text-ink-soft">
-        {bets.length
-          ? `Fans like ${bets.length === 1 ? "it" : "them"}, and ${bets.length === 1 ? "it is" : "each is"} a top-3 brand of its type ${where}. The list below is ranked by national fan fit instead.`
-          : "No brand stands out locally, so lead with the best national fan fit."}
+        {top.brandName} is the fans&apos; top match nationally{topIsLocal ? ` and a top-3 brand of its type ${where}` : ""}.{" "}
+        {local.length
+          ? `${local.length === 1 ? "The other is" : "The others are"} top-3 ${where}, so they travel well across the tour.`
+          : bets.length
+            ? ""
+            : "No brand stands out locally, so pitch on national fan fit."}
       </p>
+      <WhyQloo data={data} onCompare={onCompare} />
     </section>
   );
 }
@@ -196,12 +204,62 @@ function BrandRow({
   );
 }
 
+/** One line under the short answer that points at the with/without comparison, with its numbers once they exist. */
+function WhyQloo({ data, onCompare }: { data: RunPayload; onCompare: () => void }) {
+  const s = baselineStats(data);
+  return (
+    <p className="mt-3 text-sm">
+      {s ? (
+        <>
+          Without Qloo, the same AI&apos;s picks average a fan fit of <b>{score(s.modelAvg)}</b>. This list averages{" "}
+          <b className="text-evidence">{score(s.overlapAvg)}</b>.{" "}
+        </>
+      ) : (
+        <>What would an AI pick without Qloo? </>
+      )}
+      <button type="button" onClick={onCompare} className="font-semibold text-coral-ink underline-offset-4 hover:underline">
+        See the comparison →
+      </button>
+    </p>
+  );
+}
+
 /* ---------------- LLM-only comparison ---------------- */
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+/** Average Qloo fan affinity of the model's own picks vs Overlap's shortlist; null until the picks are scored. */
+export function baselineStats(data: RunPayload) {
+  const r = data.run.llmOnly;
+  if (!r?.scored) return null;
+  const model = r.picks.map((p) => p.qlooAffinity).filter((a): a is number => a != null);
+  const overlap = data.brands.map((b) => b.affinity).filter((a): a is number => a != null);
+  const modelAvg = mean(model);
+  const overlapAvg = mean(overlap);
+  if (modelAvg == null || overlapAvg == null) return null;
+  const floor = Math.min(...overlap);
+  return {
+    modelAvg,
+    overlapAvg,
+    below: model.filter((a) => a < floor).length,
+    unknown: r.picks.filter((p) => p.qlooAffinity == null && p.onShortlist == null).length,
+  };
+}
+
+/** Affinity on the 0–100 "fan fit" scale the brand cards use. */
+const score = (a: number) => Math.round(a * 100);
 
 export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const result = data.run.llmOnly;
+  const needsScores = !!result && !result.scored;
+
+  // Comparisons saved before picks were scored in Qloo get their numbers once, on first view.
+  useEffect(() => {
+    if (!needsScores) return;
+    api.llmOnly(data.run.id).then(onChanged, () => {});
+  }, [needsScores, data.run.id, onChanged]);
 
   if (!result)
     return (
@@ -233,16 +291,35 @@ export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: 
     );
 
   const backed = result.picks.filter((p) => p.onShortlist != null).length;
+  const s = baselineStats(data);
   return (
     <div>
       <p className="max-w-[72ch] text-[1.05rem] leading-relaxed">
         Without Qloo, the model named <b>{result.picks.length} brands</b>.{" "}
         {backed === 0 ? (
-          <>None of them is on Overlap&apos;s Qloo-grounded shortlist; none has audience evidence behind it here.</>
+          <>None of them made Overlap&apos;s Qloo-grounded shortlist.</>
         ) : (
           <>
-            <b className="text-evidence">{backed}</b> {backed === 1 ? "of them is" : "of them are"} on Overlap&apos;s Qloo-grounded shortlist
-            {backed < result.picks.length ? "; the rest have no audience evidence behind them here." : "."}
+            <b className="text-evidence">{backed}</b> {backed === 1 ? "of them is" : "of them are"} on Overlap&apos;s Qloo-grounded shortlist.
+          </>
+        )}
+        {s && (
+          <>
+            {" "}
+            Scored against the same fans in Qloo, its picks average a fan fit of <b>{score(s.modelAvg)}</b>; Overlap&apos;s shortlist averages{" "}
+            <b className="text-evidence">{score(s.overlapAvg)}</b>.
+            {s.below > 0 && (
+              <>
+                {" "}
+                {s.below} of its picks score below every brand on Overlap&apos;s list.
+              </>
+            )}
+            {s.unknown > 0 && (
+              <>
+                {" "}
+                {s.unknown} {s.unknown === 1 ? "pick isn't" : "picks aren't"} matched in Qloo.
+              </>
+            )}
           </>
         )}
         {result.missed.length > 0 && (
@@ -265,11 +342,18 @@ export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: 
                   <span className="ml-2 text-xs text-ink-soft">{p.category}</span>
                   <span className="mt-1 block text-sm leading-relaxed text-ink-soft">{p.why}</span>
                 </span>
-                {p.onShortlist != null ? (
-                  <span className="self-start whitespace-nowrap bg-evidence-soft px-1.5 py-0.5 font-mono text-[11px] text-evidence tnum">Overlap #{p.onShortlist}</span>
-                ) : (
-                  <span className="self-start whitespace-nowrap text-xs text-ink-soft">No Qloo evidence</span>
-                )}
+                <span className="flex flex-col items-end gap-1 self-start whitespace-nowrap">
+                  {p.onShortlist != null && (
+                    <span className="bg-evidence-soft px-1.5 py-0.5 font-mono text-[11px] text-evidence tnum">Overlap #{p.onShortlist}</span>
+                  )}
+                  {p.qlooAffinity != null && p.qlooCallId != null ? (
+                    <CallLink callId={p.qlooCallId} label={`fan fit ${score(p.qlooAffinity)}`} />
+                  ) : result.scored && p.onShortlist == null ? (
+                    <span className="text-xs text-ink-soft">No Qloo match</span>
+                  ) : p.onShortlist == null ? (
+                    <span className="text-xs text-ink-soft">Not on shortlist</span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ol>
@@ -286,7 +370,7 @@ export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: 
                     <span className="mr-2 font-mono text-sm text-ink-soft tnum">#{m.rank}</span>
                     <span className="font-semibold">{m.name}</span>
                   </span>
-                  <span className="font-mono text-sm text-evidence tnum">{fmt(m.affinity, 3)}</span>
+                  <span className="font-mono text-sm text-evidence tnum">{m.affinity != null ? score(m.affinity) : "–"}</span>
                 </li>
               ))}
             </ol>
@@ -294,7 +378,8 @@ export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: 
         </div>
       </div>
       <p className="mt-6 text-xs text-ink-soft">
-        Model: {result.model}, asked once with the tour, cities and categories only. Matching is by brand name.
+        Model: {result.model}, asked once with the tour, cities and categories only. Each pick is then looked up in Qloo by exact brand name and
+        scored against the same artist signal as the shortlist.
       </p>
     </div>
   );
@@ -476,10 +561,23 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
   );
 }
 
+const TAG_GROUPS = [
+  { subtype: "urn:tag:genre:music", label: "Music they like" },
+  { subtype: "urn:tag:genre:media", label: "Books, film & TV" },
+  { subtype: "urn:tag:genre:place", label: "Where they go" },
+] as const;
+
 function Crowd({ profile }: { profile?: CityProfile }) {
   // Crowd evidence holds the logged results of the cited calls: taste tags ({items}) and demographics ({age, gender}).
-  const tagEntry = profile?.evidence.crowd.find((c) => c && "items" in c);
-  const tags = tagEntry && "items" in tagEntry ? tagEntry.items.filter((t) => !isSensitiveTag(t)) : null;
+  // Tags are grouped by family; dish tags (Hamburger, Fries) say little about a sponsor fit and are left out.
+  const city = profile?.city.toLowerCase();
+  const all = (profile?.evidence.crowd ?? [])
+    .flatMap((c) => (c && "items" in c ? c.items : []))
+    .filter((t) => !isSensitiveTag(t) && t.name.trim().toLowerCase() !== city);
+  const groups = TAG_GROUPS.map((g) => ({
+    label: g.label,
+    tags: [...new Map(all.filter((t) => t.subtype === g.subtype || t.tagId?.startsWith(`${g.subtype}:`)).map((t) => [t.name.toLowerCase(), t])).values()].slice(0, 6),
+  })).filter((g) => g.tags.length > 0);
   return (
     <div>
       <h3 className="display text-[1.6rem]">The crowd</h3>
@@ -491,21 +589,23 @@ function Crowd({ profile }: { profile?: CityProfile }) {
       ) : (
         <p className="mt-2 text-sm text-ink-soft">No crowd summary for this city.</p>
       )}
-      {tags && tags.length > 0 && (
-        <div className="mt-4 border-t border-rule pt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-ink-soft">What these fans like</span>
-          </div>
-          {tags && (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {tags.slice(0, 12).map((t) => (
-                <li key={t.tagId} className="bg-evidence-soft px-1.5 py-0.5 text-xs text-evidence">
-                  {t.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      {groups.length > 0 && (
+        <dl className="mt-4 grid gap-y-2.5 border-t border-rule pt-3">
+          {groups.map((g) => (
+            <div key={g.label} className="grid gap-x-3 gap-y-1 sm:grid-cols-[7.5rem_1fr]">
+              <dt className="text-xs font-semibold text-ink-soft sm:pt-0.5">{g.label}</dt>
+              <dd>
+                <ul className="flex flex-wrap gap-1.5">
+                  {g.tags.map((t) => (
+                    <li key={t.tagId} className="bg-evidence-soft px-1.5 py-0.5 text-xs text-evidence">
+                      {t.name.trim()}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
     </div>
   );
@@ -527,11 +627,23 @@ function areaName(cell: HeatCell, partners: Partner[]) {
   return near && near.d <= 1500 ? near.name : null;
 }
 
+/** "2.4 km northwest": distance and compass direction from a to b. */
+function bearing(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const k = Math.PI / 180;
+  const dx = (b.lon - a.lon) * Math.cos(((a.lat + b.lat) / 2) * k);
+  const dy = b.lat - a.lat;
+  const dirs = ["east", "northeast", "north", "northwest", "west", "southwest", "south", "southeast"];
+  const dir = dirs[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+  const km = metres(a, b) / 1000;
+  return `${km < 10 ? km.toFixed(1) : Math.round(km)} km ${dir}`;
+}
+
 function FanSpots({ profile, partners }: { profile?: CityProfile; partners: Partner[] }) {
   const spots: { label: string; hint: string; cell?: HeatCell }[] = [
     { label: "Biggest fan area", hint: "Where most of the fans are", cell: profile?.hotspot?.hotspots[0] },
     { label: "Hidden fan pocket", hint: "Fewer people, but big fans", cell: profile?.hotspot?.devotedPockets[0] },
   ];
+  const main = profile?.hotspot?.hotspots[0];
   return (
     <div>
       <h3 className="display text-[1.6rem]">Where fans gather</h3>
@@ -543,7 +655,11 @@ function FanSpots({ profile, partners }: { profile?: CityProfile; partners: Part
                 <span className="flex items-baseline justify-between gap-3">
                   <span className="font-semibold group-hover:underline">
                     {s.label}
-                    {areaName(s.cell, partners) && <span className="font-normal text-ink-soft">: around {areaName(s.cell, partners)}</span>}
+                    {areaName(s.cell, partners) ? (
+                      <span className="font-normal text-ink-soft">: around {areaName(s.cell, partners)}</span>
+                    ) : (
+                      s.cell !== main && main && <span className="font-normal text-ink-soft">: {bearing(main, s.cell)} of the biggest fan area</span>
+                    )}
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
                     Open map

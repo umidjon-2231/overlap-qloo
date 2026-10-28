@@ -237,7 +237,15 @@ export function RunView({ runId }: { runId: string }) {
             />
           )}
 
-          {hasResults && tab !== "pitch" && <BestBets data={data} />}
+          {hasResults && tab !== "pitch" && (
+            <BestBets
+              data={data}
+              onCompare={() => {
+                setTab("compare");
+                requestAnimationFrame(() => document.getElementById("with-without")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+              }}
+            />
+          )}
           {run.summary && !staging && tab !== "pitch" && <Summary text={run.summary} />}
 
           {hasResults && tab === "pitch" && (
@@ -275,11 +283,11 @@ export function RunView({ runId }: { runId: string }) {
                 {tab === "cities" && city && <CityDetail data={data} city={city} onCity={setCity} />}
                 {tab === "compare" && (
                   <div className="grid grid-cols-[minmax(0,1fr)] gap-14">
-                    <CityGrid data={data} onCity={openCity} />
-                    <section>
+                    <section id="with-without">
                       <SectionTitle title="With Qloo vs without" hint="What the same AI picks with no Qloo fan data" />
                       <LlmOnlyView data={data} onChanged={refresh} />
                     </section>
+                    <CityGrid data={data} onCity={openCity} />
                   </div>
                 )}
               </div>

@@ -201,6 +201,8 @@ export const localPartners = defineTool({
   },
 });
 
+const CROWD_TAG_TYPES = ["urn:tag:genre:music", "urn:tag:genre:media", "urn:tag:genre:place"] as const;
+
 export const crowdProfile = defineTool({
   name: "crowd_profile",
   description:
@@ -208,20 +210,29 @@ export const crowdProfile = defineTool({
     "age/gender skew of the artist(s)' audience (global, relative to average; never describe individuals).",
   input: z.object({ artist_ids: entityIds, city: z.string().min(1) }),
   async run({ artist_ids, city }, ctx) {
-    const [tags, demo] = await Promise.all([
-      qloo.tagInsights({ entities: artist_ids, signalLocation: city, take: 15 }, ctx),
+    // One query per tag family: unfiltered, place and dish tags (Bar, Hamburger) crowd out music and reading taste.
+    const tagFor = (t: string) => qloo.tagInsights({ entities: artist_ids, signalLocation: city, tagTypes: [t], take: 10 }, ctx);
+    const [music, media, places, demo] = await Promise.all([
+      tagFor(CROWD_TAG_TYPES[0]),
+      tagFor(CROWD_TAG_TYPES[1]),
+      tagFor(CROWD_TAG_TYPES[2]),
       qloo.demographics({ entities: artist_ids }, ctx),
     ]);
+    const tagResults = [music, media, places];
+    const notCity = (t: { name: string }) => t.name.trim().toLowerCase() !== city.trim().toLowerCase();
+    const clean = (r: typeof music) => (r.data?.items ?? []).filter((t) => !isSensitiveTag(t) && notCity(t));
     return {
-      status: combineStatus([tags.status, demo.status]),
+      status: combineStatus([...tagResults.map((r) => r.status), demo.status]),
       data: {
         city,
-        locality: tags.data?.locality ?? null,
-        tasteTags: (tags.data?.items ?? []).filter((t) => !isSensitiveTag(t)),
+        locality: tagResults.find((r) => r.data?.locality)?.data?.locality ?? null,
+        musicTags: clean(music),
+        mediaTags: clean(media),
+        placeTags: clean(places),
         demographics: demo.data ?? null,
         demographicsScope: "global audience, relative to average",
       },
-      callIds: [tags.callId, demo.callId],
+      callIds: [...tagResults.map((r) => r.callId), demo.callId],
     };
   },
 });

@@ -12,7 +12,7 @@ Rules:
 - If a result is empty or thin, say so; do not fill the gap with guesses.
 - A brand missing from a city's local ranking is NOT evidence of weak fit (localised rankings favour brands with local signal and often omit national leaders). Present local ranks as upside; never recommend excluding a city for that reason.
 - Local affinity is rescaled per city: compare local ranks across cities, never local scores. Heatmap cell counts measure data coverage, not audience size.
-- In partner ideas, name only the brand the idea is for, or describe the brand category (e.g. "a drinks partner").
+- Partner ideas: pair each place with the shortlisted brand that suits it best and name that brand (e.g. a camera brand's photo booth at a live-music venue, a fashion pop-up at a cafe). Use different brands across a city's partners; never name a brand that is not on your shortlist.
 - Affinity is an aggregate audience signal. Never present it as a probability, forecast, causal effect, or a claim about any individual.
 - Never describe audiences by sensitive traits (sexual orientation, religion, politics, health, ethnicity).
 - Do not send personal data to tools. Inputs are entity IDs, cities, tags and coordinates only.
@@ -98,7 +98,7 @@ A ready-to-send email, 120–170 words, plain language for a brand partnerships 
 
 ## Seller notes (internal, do not send)
 3–5 short bullets the seller should know before sending: what the data does and does not show, approvals to get, what to verify.
-This is the only place for caveats. Name only places that already appear in the sections above; never introduce a new venue here.
+This is the only place for caveats. Name only places that already appear in the sections above; never introduce a new venue here, not even as an alternative.
 
 ## Evidence
 One bullet per figure used above, each citing exactly one Qloo lookup, e.g. "Fashion rank #1 of 30 in Los Angeles' local ranking (Qloo lookup #870)". Use the callId attached to that exact field. This is the only section that may show lookup numbers.
@@ -108,6 +108,7 @@ One sentence: names identify and do not imply endorsement; any partnership needs
 
 Hard rules:
 - Use only the evidence JSON. Never invent venues, dates, prices, audience sizes, attendance, ROI or deal values.
+- The only places you may name are cities[].partnerPlaces. The evidence has no show venues: never name or assume a concert hall, arena or show date ("before the show at …"), even a famous one.
 - Describe a venue only with what its evidence says (type, neighbourhood, description). Do not add physical details (floors, capacities, rooms, views) that the evidence does not state.
 - Absence from a local ranking is NOT evidence against fit. Never recommend dropping or deprioritising a city for that reason.
 - Never compare local scores across cities; only local ranks are comparable.
