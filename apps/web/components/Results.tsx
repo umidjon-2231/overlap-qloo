@@ -2,65 +2,77 @@
 
 import { BRAND_CATEGORIES, isSensitiveTag, type BrandCategory } from "@overlap/shared";
 import { useState } from "react";
-import { api, type BrandMatch, type CityCell, type CityProfile, type HeatCell, type Partner, type RunPayload } from "@/lib/api";
+import { api, type BrandMatch, type CityProfile, type HeatCell, type Partner, type RunPayload } from "@/lib/api";
 import { CallLink } from "./Provenance";
-import { AgentLabel, Button, CoverageBadge, CoverageMark, QlooLabel, SectionTitle, fmt } from "./ui";
+import { AgentLabel, Button, CoverageBadge, CoverageMark, SectionTitle, fmt } from "./ui";
 
 const categoryLabel = (c: string | null) => (c && c in BRAND_CATEGORIES ? BRAND_CATEGORIES[c as BrandCategory].label : c === "any" ? "Any" : c ?? "");
 
 /* ---------------- Shortlist: a ranked bill, top pick on a coral field ---------------- */
 
+/** Cities where a brand ranks in the local top 3 for its category. */
+function strongCities(data: RunPayload, brandId: string) {
+  return data.run.cities
+    .map((city) => ({ city, rank: data.cells.find((c) => c.brandEntityId === brandId && c.city === city)?.rankInCity ?? null }))
+    .filter((x): x is { city: string; rank: number } => x.rank != null);
+}
+
+/** The plain-English answer: brands that fans love and that also lead in most of the tour's cities. */
+export function BestBets({ data }: { data: RunPayload }) {
+  const half = Math.ceil(data.run.cities.length / 2);
+  const bets = data.brands
+    .map((b, i) => ({ b, i, top3: strongCities(data, b.brandEntityId).filter((x) => x.rank <= 3).length }))
+    .filter((x) => x.top3 >= half)
+    .sort((a, b) => b.top3 - a.top3 || a.i - b.i)
+    .slice(0, 3);
+  const top = data.brands[0];
+  if (!top) return null;
+  const names = (bets.length ? bets.map((x) => x.b) : [top]).map((b) => (
+    <button
+      key={b.brandEntityId}
+      type="button"
+      onClick={() => document.getElementById(`brand-${b.brandEntityId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+      className="underline decoration-coral decoration-2 underline-offset-4 hover:text-coral-ink">
+      {b.brandName}
+    </button>
+  ));
+  const joined = names.flatMap((n, i) => (i === 0 ? [n] : [i === names.length - 1 ? " and " : ", ", n]));
+  const where = data.run.cities.length === 1 ? `in ${data.run.cities[0]}` : "in most of your cities";
+  return (
+    <section className="mt-6 max-w-[62ch] border-l-4 border-coral pl-4">
+      <p className="text-xs font-bold uppercase tracking-[0.08em] text-ink-soft">The short answer</p>
+      <p className="display-wide mt-1 text-[1.45rem] leading-snug">
+        {bets.length ? <>Safest bets: {joined}.</> : <>Lead with {joined}.</>}
+      </p>
+      <p className="mt-1 text-ink-soft">
+        {bets.length
+          ? `Fans like ${bets.length === 1 ? "it" : "them"}, and ${bets.length === 1 ? "it is" : "each is"} a top-3 brand of its type ${where}. The list below is ranked by national fan fit instead.`
+          : "No brand stands out locally, so lead with the best national fan fit."}
+      </p>
+    </section>
+  );
+}
+
 export function Shortlist({
   data,
   onPitch,
   onCity,
-  onChanged,
 }: {
   data: RunPayload;
   onPitch: (brandId: string) => void;
   onCity: (city: string) => void;
-  onChanged: () => void;
 }) {
-  const [mode, setMode] = useState<"qloo" | "llm">("qloo");
-  const toggle = (
-    <div role="radiogroup" aria-label="Source" className="inline-flex border border-ink">
-      {(
-        [
-          ["qloo", "Qloo-grounded"],
-          ["llm", "LLM only"],
-        ] as const
-      ).map(([id, label]) => (
-        <button
-          key={id}
-          type="button"
-          role="radio"
-          aria-checked={mode === id}
-          onClick={() => setMode(id)}
-          className="px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-paper-2 aria-checked:bg-ink aria-checked:text-on-ink"
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-  if (mode === "llm")
-    return (
-      <section>
-        <SectionTitle title="Brands to pitch" hint="The same model, asked without any Qloo data" action={toggle} />
-        <LlmOnlyView data={data} onChanged={onChanged} />
-      </section>
-    );
   return (
     <section>
-      <SectionTitle title="Brands to pitch" hint="Ranked by Qloo audience affinity with the artist's fans" action={toggle} />
+      <SectionTitle title="Brands to pitch" hint="Ranked by national fan fit: how much the artist's fans like each brand." />
       <ol className="border-b border-ink">
         {data.brands.map((b, i) => (
           <BrandRow
             key={b.brandEntityId}
             rank={i + 1}
             brand={b}
-            cells={data.run.cities.map((city) => data.cells.find((c) => c.brandEntityId === b.brandEntityId && c.city === city) ?? null)}
-            cities={data.run.cities}
+            strong={strongCities(data, b.brandEntityId)}
+            pitch={data.pitches.find((p) => p.brandEntityId === b.brandEntityId)}
             onPitch={onPitch}
             onCity={onCity}
           />
@@ -71,84 +83,114 @@ export function Shortlist({
   );
 }
 
+const fitLabel = (score: number | null) => (score == null ? "" : score >= 90 ? "Excellent fit" : score >= 80 ? "Strong fit" : "Good fit");
+
 function BrandRow({
   rank,
   brand,
-  cells,
-  cities,
+  strong,
+  pitch,
   onPitch,
   onCity,
 }: {
   rank: number;
   brand: BrandMatch;
-  cells: (CityCell | null)[];
-  cities: string[];
+  strong: { city: string; rank: number }[];
+  pitch?: RunPayload["pitches"][number];
   onPitch: (id: string) => void;
   onCity: (city: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const top = rank === 1;
   const q = brand.evidence.qloo;
+  const soft = top ? "text-ink" : "text-ink-soft";
   return (
-    <li className={`grid grid-cols-[2.25rem_1fr] gap-x-4 border-t border-ink px-3 py-5 sm:grid-cols-[2.75rem_1fr_7rem] sm:px-4 ${top ? "bg-coral" : ""}`}>
-      <div className="display pt-1 text-[1.9rem] tnum">{rank}</div>
+    <li id={`brand-${brand.brandEntityId}`} className={`grid scroll-mt-24 grid-cols-[2rem_1fr] gap-x-4 border-t border-ink px-3 py-5 sm:grid-cols-[2.5rem_1fr_auto] sm:px-4 ${top ? "bg-coral" : ""}`}>
+      <div className="display pt-0.5 text-[1.9rem] tnum">{rank}</div>
 
       <div className="min-w-0">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h3 className="display-wide text-[1.5rem] leading-tight">{brand.brandName}</h3>
-          {top && <span className="text-xs font-bold uppercase tracking-[0.08em]">Top pick</span>}
-          <span className={`text-sm ${top ? "text-ink" : "text-ink-soft"}`}>
+          <span className={`text-sm ${soft}`}>
             {categoryLabel(brand.category)}
-            {brand.source === "agent_wildcard" && " · Overlap's wildcard"}
+            {brand.source === "agent_wildcard" && " · wildcard idea"}
           </span>
         </div>
 
-        <p className="mt-2 max-w-[72ch] text-sm leading-relaxed">
-          <QlooLabelOn top={top} /> Affinity <b className="font-mono tnum">{fmt(brand.affinity, 3)}</b> with the artist&apos;s audience, popularity{" "}
-          <span className="font-mono tnum">{fmt(brand.popularity, 2)}</span>
-          {q.customerSegments?.length > 0 && <> · {q.customerSegments.slice(0, 3).join(", ")}</>} <CallLink callId={brand.evidence.callId} onField={top} />
-        </p>
-
         {brand.agentNote && (
-          <p className="mt-2 max-w-[72ch] text-sm leading-relaxed">
-            <span className={`mr-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] ${top ? "text-ink" : "text-ink-soft"}`}>Overlap suggests</span>
+          <p className="mt-2 max-w-[68ch] leading-relaxed">
+            <span className={`mr-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] ${soft}`}>Overlap suggests</span>
             {brand.agentNote}
           </p>
         )}
 
-        <div className="mt-3 flex flex-wrap gap-x-1 gap-y-1 text-xs">
-          {cities.map((city, i) => {
-            const c = cells[i];
-            const ranked = c && c.rankInCity != null;
-            return (
-              <button
-                key={city}
-                type="button"
-                onClick={() => onCity(city)}
-                title={ranked ? `#${c.rankInCity} in ${city}'s local ranking for this category` : "Not in this city's local top 30: national fit applies"}
-                className={`rounded-[2px] px-1.5 py-0.5 transition-colors hover:bg-ink hover:text-on-ink ${
-                  ranked ? (top ? "bg-ink text-on-ink" : "bg-evidence-soft text-evidence") : top ? "text-ink" : "text-ink-soft"
-                }`}
-              >
-                {city} <span className="font-mono tnum">{ranked ? `#${c.rankInCity}` : "·"}</span>
-              </button>
-            );
-          })}
-        </div>
+        <p className={`mt-3 text-sm ${soft}`}>
+          {strong.length > 0 ? (
+            <>
+              <span className="mr-1">{brand.category && brand.category !== "any" ? `Rank among ${categoryLabel(brand.category)} brands:` : "City ranks:"}</span>
+              {strong.map((s, i) => (
+                <span key={s.city}>
+                  {i > 0 && ", "}
+                  <button type="button" onClick={() => onCity(s.city)} className="font-semibold text-ink underline-offset-4 hover:underline">
+                    {s.city}
+                  </button>{" "}
+                  <span className="font-mono tnum">#{s.rank}</span>
+                </span>
+              ))}
+            </>
+          ) : (
+            "A national fit: not in any city's local top list."
+          )}
+        </p>
 
-        {q.knownPartnerships?.length > 0 && (
-          <p className={`mt-3 max-w-[72ch] text-sm ${top ? "text-ink" : "text-ink-soft"}`}>Known partners: {q.knownPartnerships.slice(0, 4).join(", ")}</p>
-        )}
-
-        <div className="mt-4">
-          <Button variant="secondary" onClick={() => onPitch(brand.brandEntityId)}>
-            Open pitch pack
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Button variant={top ? "secondary" : "primary"} onClick={() => onPitch(brand.brandEntityId)}>
+            {pitch ? (pitch.approved ? "Pitch ready ✓" : "Open pitch draft") : "Write the pitch"}
           </Button>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className={`text-sm font-semibold underline-offset-4 hover:underline ${soft}`}
+          >
+            {open ? "Hide the data" : "Show the data"}
+          </button>
         </div>
+
+        {open && (
+          <dl className={`mt-3 grid max-w-[68ch] grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t pt-3 text-sm ${top ? "border-ink" : "border-rule"}`}>
+            <dt className={soft}>Fan fit</dt>
+            <dd>
+              <span className="font-mono tnum">{brand.overlapScore ?? "–"}</span> = Qloo fan affinity <span className="font-mono tnum">{fmt(brand.affinity, 3)}</span> × 100
+            </dd>
+            <dt className={soft}>Popularity</dt>
+            <dd className="font-mono tnum">{fmt(brand.popularity, 2)}</dd>
+            {q.customerSegments?.length > 0 && (
+              <>
+                <dt className={soft}>Customers</dt>
+                <dd>{q.customerSegments.slice(0, 3).join(", ")}</dd>
+              </>
+            )}
+            {q.knownPartnerships?.length > 0 && (
+              <>
+                <dt className={soft}>Known partners</dt>
+                <dd>{q.knownPartnerships.slice(0, 4).join(", ")}</dd>
+              </>
+            )}
+            <dt className={soft}>Source</dt>
+            <dd>
+              <CallLink callId={brand.evidence.callId} label="See the Qloo lookup" onField={top} />
+            </dd>
+          </dl>
+        )}
       </div>
 
-      <div className="col-start-2 mt-3 flex items-baseline gap-2 sm:col-start-3 sm:mt-0 sm:flex-col sm:items-end sm:gap-0 sm:text-right" title="Overlap score = Qloo audience affinity × 100">
-        <span className={`display text-[3.25rem] tnum ${top ? "text-ink" : "text-evidence"}`}>{brand.overlapScore ?? "–"}</span>
-        <span className={`text-xs ${top ? "text-ink" : "text-ink-soft"}`}>overlap score</span>
+      <div
+        className="col-start-2 mt-3 flex items-baseline gap-2 sm:col-start-3 sm:mt-0 sm:flex-col sm:items-end sm:gap-0 sm:text-right"
+        title="Fan fit = how much the artist's fans like this brand, from Qloo (affinity × 100)"
+      >
+        <span className={`display text-[3rem] tnum ${top ? "text-ink" : "text-evidence"}`}>{brand.overlapScore ?? "–"}</span>
+        <span className={`text-xs font-semibold ${soft}`}>{top ? "Top fan fit" : fitLabel(brand.overlapScore)}</span>
       </div>
     </li>
   );
@@ -156,7 +198,7 @@ function BrandRow({
 
 /* ---------------- LLM-only comparison ---------------- */
 
-function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => void }) {
+export function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const result = data.run.llmOnly;
@@ -224,7 +266,7 @@ function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => v
                   <span className="mt-1 block text-sm leading-relaxed text-ink-soft">{p.why}</span>
                 </span>
                 {p.onShortlist != null ? (
-                  <span className="self-start whitespace-nowrap bg-evidence-soft px-1.5 py-0.5 font-mono text-[11px] text-evidence tnum">Qloo #{p.onShortlist}</span>
+                  <span className="self-start whitespace-nowrap bg-evidence-soft px-1.5 py-0.5 font-mono text-[11px] text-evidence tnum">Overlap #{p.onShortlist}</span>
                 ) : (
                   <span className="self-start whitespace-nowrap text-xs text-ink-soft">No Qloo evidence</span>
                 )}
@@ -258,10 +300,6 @@ function LlmOnlyView({ data, onChanged }: { data: RunPayload; onChanged: () => v
   );
 }
 
-function QlooLabelOn({ top }: { top: boolean }) {
-  return top ? <span className="mr-1.5 text-[11px] font-semibold uppercase tracking-[0.06em]">Qloo says</span> : <span className="mr-1.5"><QlooLabel /></span>;
-}
-
 /* ---------------- Brand × city grid ---------------- */
 
 export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: string) => void }) {
@@ -280,7 +318,7 @@ export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: st
 
   return (
     <section>
-      <SectionTitle title="Brand × city" hint="Each brand's position in the city's own Qloo ranking for its category" />
+      <SectionTitle title="Brand by city" hint="Where each brand ranks in each city (#1 is best)" />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] border-collapse text-sm">
           <thead>
@@ -296,7 +334,7 @@ export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: st
                       {city}
                     </button>
                     <div className="mt-1">
-                      <CoverageBadge coverage={p?.coverage ?? "none"} label={p?.cellCount != null ? `${p.cellCount.toLocaleString()} fan cells` : undefined} />
+                      <CoverageBadge coverage={p?.coverage ?? "none"} />
                     </div>
                   </th>
                 );
@@ -328,8 +366,7 @@ export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: st
                     <td key={city} className="px-1.5 py-1.5">
                       <div className={`px-1.5 py-1.5 ${strength} ${best ? "outline-2 -outline-offset-2 outline-coral" : ""}`}>
                         <div className="font-mono text-base font-semibold tnum">#{c.rankInCity}</div>
-                        <div className="font-mono text-[11px] tnum opacity-80">{fmt(c.affinity, 3)}</div>
-                      </div>
+                                              </div>
                     </td>
                   );
                 })}
@@ -337,7 +374,7 @@ export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: st
             ))}
             <tr className="border-t border-ink align-top">
               <th scope="row" className="py-3 pr-3 text-left text-xs font-semibold">
-                Strong locally, not on the shortlist
+                Also popular here (not on your list)
               </th>
               {cities.map((city) => (
                 <td key={city} className="px-3 py-3 text-xs">
@@ -354,9 +391,9 @@ export function CityGrid({ data, onCity }: { data: RunPayload; onCity: (city: st
         </table>
       </div>
       <p className="mt-3 max-w-[80ch] text-xs leading-relaxed text-ink-soft">
-        #rank is the brand&apos;s position in that city&apos;s top 30 for its category: extra local proof. National fit means it is not in the local top 30,
-        which is not evidence of weak fit. The coral outline marks the shortlisted brand that ranks best locally. Local scores are rescaled per
-        city, so compare ranks, not scores.
+        #1 means the brand tops that city&apos;s list for its own type (fashion, travel…), so a city can have several #1s. &quot;National
+        fit&quot; means it is not on the city&apos;s list, which does not mean a weak fit. The coral outline marks one standout per city: the
+        best rank, with ties going to the higher local score.
       </p>
     </section>
   );
@@ -377,7 +414,7 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
 
   return (
     <section>
-      <div className="mb-4 flex flex-wrap gap-1 lg:hidden">
+      <div className="mb-4 flex flex-wrap gap-1">
         {data.run.cities.map((c) => (
           <button
             key={c}
@@ -397,12 +434,12 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
           <span className={profile?.coverage === "strong" ? "text-on-ink" : "text-on-ink-soft"}>
             <span className="inline-flex items-center gap-1.5 text-xs font-medium">
               <CoverageMark coverage={profile?.coverage ?? "none"} />
-              {profile?.cellCount != null ? `${profile.cellCount.toLocaleString()} fan cells` : "no fan data"}
+              {profile?.coverage === "strong" ? "strong fan data" : profile?.coverage === "thin" ? "thin fan data" : "no fan data"}
             </span>
           </span>
         </div>
-        {profile?.hotspot?.locality?.disambiguation && <p className="mt-1 text-xs text-on-ink-soft">Qloo resolved: {profile.hotspot.locality.disambiguation}</p>}
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-on-ink-soft">Your brands here (rank among their type)</p>
+        <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm">
           {brandsHere.length > 0 ? (
             brandsHere.slice(0, 5).map(({ cell, brand }) => (
               <span key={brand.brandEntityId}>
@@ -410,7 +447,7 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
               </span>
             ))
           ) : (
-            <span className="text-on-ink-soft">No shortlisted brand in this city&apos;s local top 30: every pick here is a national fit.</span>
+            <span className="text-on-ink-soft">None of your brands is on this city&apos;s list. Pitch them on national fit.</span>
           )}
         </div>
       </div>
@@ -419,12 +456,12 @@ export function CityDetail({ data, city, onCity }: { data: RunPayload; city: str
 
       <div className="grid gap-x-10 gap-y-8 pt-8 xl:grid-cols-2">
         <Crowd profile={profile} />
-        <FanSpots profile={profile} />
+        <FanSpots profile={profile} partners={partners} />
       </div>
 
       <div className="pt-10">
         <h3 className="display text-[1.6rem]">Local partners</h3>
-        <p className="mt-1 text-sm text-ink-soft">Places near the fans&apos; hotspot that the artist&apos;s audience already likes, with an activation idea for each.</p>
+        <p className="mt-1 text-sm text-ink-soft">Venues near where the fans gather, with an event idea for each.</p>
         {partners.length === 0 ? (
           <p className="mt-4 text-sm text-ink-soft">Qloo returned no partner places for this city.</p>
         ) : (
@@ -443,8 +480,6 @@ function Crowd({ profile }: { profile?: CityProfile }) {
   // Crowd evidence holds the logged results of the cited calls: taste tags ({items}) and demographics ({age, gender}).
   const tagEntry = profile?.evidence.crowd.find((c) => c && "items" in c);
   const tags = tagEntry && "items" in tagEntry ? tagEntry.items.filter((t) => !isSensitiveTag(t)) : null;
-  const demoEntry = profile?.evidence.crowd.find((c) => c && "age" in c);
-  const demo = demoEntry && "age" in demoEntry ? demoEntry : null;
   return (
     <div>
       <h3 className="display text-[1.6rem]">The crowd</h3>
@@ -456,11 +491,10 @@ function Crowd({ profile }: { profile?: CityProfile }) {
       ) : (
         <p className="mt-2 text-sm text-ink-soft">No crowd summary for this city.</p>
       )}
-      {(tags?.length || demo) && (
+      {tags && tags.length > 0 && (
         <div className="mt-4 border-t border-rule pt-3">
           <div className="flex flex-wrap items-center gap-2">
-            <QlooLabel />
-            {profile?.evidence.crowdCallIds.map((id) => <CallLink key={id} callId={id} />)}
+            <span className="text-xs font-semibold text-ink-soft">What these fans like</span>
           </div>
           {tags && (
             <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -471,48 +505,46 @@ function Crowd({ profile }: { profile?: CityProfile }) {
               ))}
             </ul>
           )}
-          {demo && (
-            <p className="mt-3 text-xs text-ink-soft">
-              Audience skew (global, relative to average):{" "}
-              <span className="font-mono tnum">
-                {Object.entries(demo.age)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 2)
-                  .map(([k, v]) => `${k.replaceAll("_", " ")} ${v > 0 ? "+" : ""}${v.toFixed(2)}`)
-                  .join(", ")}
-                {" · "}
-                {Object.entries(demo.gender)
-                  .filter(([, v]) => v > 0)
-                  .map(([k, v]) => `${k} +${v.toFixed(2)}`)
-                  .join(", ")}
-              </span>
-            </p>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-function FanSpots({ profile }: { profile?: CityProfile }) {
+/** Metres between two points (equirectangular; fine at city scale). */
+function metres(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const k = Math.PI / 180;
+  const x = (b.lon - a.lon) * k * Math.cos(((a.lat + b.lat) / 2) * k);
+  return Math.hypot(x, (b.lat - a.lat) * k) * 6_371_000;
+}
+
+/** Names a fan area after the neighbourhood of the nearest partner venue, when one is within 1.5 km. */
+function areaName(cell: HeatCell, partners: Partner[]) {
+  const near = partners
+    .filter((p) => p.latitude != null && p.longitude != null && p.evidence.qloo.neighborhood)
+    .map((p) => ({ name: p.evidence.qloo.neighborhood!, d: metres(cell, { lat: p.latitude!, lon: p.longitude! }) }))
+    .sort((a, b) => a.d - b.d)[0];
+  return near && near.d <= 1500 ? near.name : null;
+}
+
+function FanSpots({ profile, partners }: { profile?: CityProfile; partners: Partner[] }) {
   const spots: { label: string; hint: string; cell?: HeatCell }[] = [
-    { label: "Top fan hotspot", hint: "Where the artist's fans concentrate most", cell: profile?.hotspot?.hotspots[0] },
-    { label: "Devoted pocket", hint: "High affinity, low general popularity", cell: profile?.hotspot?.devotedPockets[0] },
+    { label: "Biggest fan area", hint: "Where most of the fans are", cell: profile?.hotspot?.hotspots[0] },
+    { label: "Hidden fan pocket", hint: "Fewer people, but big fans", cell: profile?.hotspot?.devotedPockets[0] },
   ];
   return (
     <div>
       <h3 className="display text-[1.6rem]">Where fans gather</h3>
-      <div className="mt-2 flex items-center gap-2">
-        <QlooLabel />
-        {profile?.evidence.heatmapCallId != null && <CallLink callId={profile.evidence.heatmapCallId} />}
-      </div>
       <ul className="mt-3 border-b border-ink">
         {spots.map((s) => (
           <li key={s.label} className="border-t border-ink py-3">
             {s.cell ? (
               <a href={osm(s.cell)} target="_blank" rel="noreferrer" className="group block">
                 <span className="flex items-baseline justify-between gap-3">
-                  <span className="font-semibold group-hover:underline">{s.label}</span>
+                  <span className="font-semibold group-hover:underline">
+                    {s.label}
+                    {areaName(s.cell, partners) && <span className="font-normal text-ink-soft">: around {areaName(s.cell, partners)}</span>}
+                  </span>
                   <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
                     Open map
                     <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden="true">
@@ -521,9 +553,6 @@ function FanSpots({ profile }: { profile?: CityProfile }) {
                   </span>
                 </span>
                 <span className="block text-xs text-ink-soft">{s.hint}</span>
-                <span className="mt-1 block font-mono text-[11px] text-evidence tnum">
-                  {s.cell.lat.toFixed(4)}, {s.cell.lon.toFixed(4)} · affinity {fmt(s.cell.affinity, 2)} · popularity {fmt(s.cell.popularity, 2)}
-                </span>
               </a>
             ) : (
               <span className="text-sm text-ink-soft">{s.label}: no data</span>
@@ -541,10 +570,7 @@ function PartnerRow({ p }: { p: Partner }) {
       <div>
         <div className="font-semibold">{p.placeName}</div>
         <div className="text-xs text-ink-soft">
-          {[p.evidence.qloo.genre, p.evidence.qloo.neighborhood, p.distanceM != null ? `${Math.round(p.distanceM)} m from hotspot` : null].filter(Boolean).join(" · ")}
-        </div>
-        <div className="mt-1">
-          <CallLink callId={p.evidence.callId} label={`affinity ${fmt(p.evidence.qloo.affinity, 2)}`} />
+          {[p.evidence.qloo.genre, p.evidence.qloo.neighborhood, p.distanceM != null ? `${Math.round(p.distanceM)} m from the fans` : null].filter(Boolean).join(" · ")}
         </div>
       </div>
       {p.idea ? (

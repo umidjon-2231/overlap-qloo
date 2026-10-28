@@ -61,9 +61,24 @@ export function PitchPackPanel({
 
   return (
     <section>
-      <SectionTitle title="Pitch pack" hint="Overlap drafts, you edit and approve. Nothing is sent." />
+      <SectionTitle title={brand ? `Pitch for ${brand.brandName}` : "Pitch"} hint="Overlap writes it. You check it, then send it yourself." />
+      <Steps step={!saved ? 1 : approved ? 3 : 2} />
+      <label className="mb-6 grid max-w-sm gap-1.5 text-sm lg:hidden">
+        <span className="font-semibold">Brand</span>
+        <select
+          value={brandId ?? ""}
+          onChange={(e) => onBrandChange(e.target.value)}
+          className="rounded-[2px] border border-ink bg-sheet px-3 py-2 text-base"
+        >
+          {data.brands.map((b) => (
+            <option key={b.brandEntityId} value={b.brandEntityId}>
+              {b.brandName}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
-        <nav aria-label="Brands">
+        <nav aria-label="Brands" className="hidden lg:block">
           <ul className="border-b border-ink">
             {data.brands.map((b) => {
               const p = data.pitches.find((x) => x.brandEntityId === b.brandEntityId);
@@ -105,11 +120,10 @@ export function PitchPackPanel({
             <div className="max-w-xl border-t-2 border-ink pt-5">
               <h3 className="display-wide text-[1.6rem]">{brand.brandName}</h3>
               <p className="mt-2 leading-relaxed text-ink-soft">
-                Overlap writes the pitch, city by city plan, activations, measurement plan and outreach email from this run&apos;s Qloo evidence. You
-                review and edit it, then approve before anything can be exported.
+                You get the pitch, a plan for each city, event ideas, how to measure results, and a ready-to-send email. Takes about 30 seconds.
               </p>
-              <Button className="mt-5" disabled={busy !== null} onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}>
-                Draft pitch pack
+              <Button className="mt-5 px-5 py-2.5 text-base" disabled={busy !== null} onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}>
+                Write the pitch
               </Button>
             </div>
           )}
@@ -117,33 +131,35 @@ export function PitchPackPanel({
           {brand && saved && busy !== "draft" && (
             <>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-ink pb-3">
-                <div role="tablist" aria-label="Pitch pack view" className="flex gap-1">
-                  {[
-                    { id: false, label: "Preview" },
-                    { id: true, label: "Edit" },
-                  ].map((t) => (
-                    <button
-                      key={t.label}
-                      role="tab"
-                      aria-selected={editing === t.id}
-                      onClick={() => setEditing(t.id)}
-                      className="rounded-[2px] px-3 py-1.5 text-sm font-semibold text-ink-soft hover:text-ink aria-selected:bg-ink aria-selected:text-on-ink"
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                {approved ? (
+                  <span className="text-sm font-semibold text-ok">✓ Approved. Ready to send.</span>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold text-warn">{dirty ? "You have unsaved edits" : "Read it, edit anything, then approve. Approving unlocks the email and PDF; nothing is sent."}</span>
+                    {!dirty && (
+                      <Button disabled={busy !== null} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
+                        {busy === "approve" ? "Approving…" : "Approve"}
+                      </Button>
+                    )}
+                  </>
+                )}
+                <div className="ml-auto flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(!editing)}
+                    className="text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+                  >
+                    {editing ? "Done editing" : "Edit text"}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-40"
+                    disabled={busy !== null}
+                    onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
+                  >
+                    Write it again
+                  </button>
                 </div>
-                <span className={`text-sm font-semibold ${approved ? "text-ok" : "text-warn"}`}>
-                  {approved ? "Approved" : dirty ? "Unsaved edits" : "Draft: needs your approval"}
-                </span>
-                <button
-                  type="button"
-                  className="ml-auto text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-40"
-                  disabled={busy !== null}
-                  onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
-                >
-                  Rewrite draft
-                </button>
               </div>
 
               <div className="bg-sheet px-5 py-6 sm:px-8">
@@ -167,39 +183,34 @@ export function PitchPackPanel({
                     {busy === "save" ? "Saving…" : "Save edits"}
                   </Button>
                 )}
-                {approved ? (
-                  <span className="inline-flex items-center gap-2 px-1 py-2 text-sm font-semibold text-ok">
-                    <svg viewBox="0 0 12 12" className="size-3.5" aria-hidden="true">
-                      <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" />
-                    </svg>
-                    Approved: ready to export
-                  </span>
-                ) : (
-                  <Button disabled={busy !== null || dirty} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
-                    {busy === "approve" ? "Approving…" : "Approve pitch pack"}
+                {!approved && !dirty && (
+                  <Button disabled={busy !== null} onClick={() => act("approve", () => api.approvePitch(data.run.id, brand.brandEntityId))}>
+                    {busy === "approve" ? "Approving…" : "Approve"}
                   </Button>
                 )}
-                <span className="mx-2 hidden h-6 w-px bg-rule sm:block" aria-hidden="true" />
-                <Button
-                  variant="secondary"
-                  disabled={!approved}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(draft);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
-                  }}
-                >
-                  {copied ? "Copied" : "Copy Markdown"}
-                </Button>
-                <a href={approved ? api.pdfUrl(data.run.id, brand.brandEntityId) : undefined} aria-disabled={!approved} className={buttonClass("secondary")}>
-                  Download PDF
-                </a>
-                <a href={approved ? mailto : undefined} aria-disabled={!approved} className={buttonClass("secondary")}>
-                  Open email draft
-                </a>
+                {approved && (
+                  <>
+                    <a href={mailto} className={buttonClass("primary")}>
+                      Open as email
+                    </a>
+                    <a href={api.pdfUrl(data.run.id, brand.brandEntityId)} className={buttonClass("secondary")}>
+                      Download PDF
+                    </a>
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(draft);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                    >
+                      {copied ? "Copied" : "Copy text"}
+                    </Button>
+                  </>
+                )}
               </div>
               <p className="mt-2 text-xs text-ink-soft">
-                {approved ? "The PDF and email draft leave out your internal seller notes." : "Export unlocks after you approve."}
+                {approved ? "The PDF and email leave out your internal seller notes." : "Sending unlocks after you approve."}
               </p>
             </>
           )}
@@ -211,5 +222,29 @@ export function PitchPackPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function Steps({ step }: { step: 1 | 2 | 3 }) {
+  const steps = ["Write", "Check & approve", "Send"];
+  return (
+    <ol className="mb-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const state = n < step ? "done" : n === step ? "now" : "next";
+        return (
+          <li key={label} className={`flex items-center gap-2 ${state === "next" ? "text-ink-soft" : "font-semibold"}`} aria-current={state === "now" ? "step" : undefined}>
+            <span
+              className={`grid size-6 place-items-center rounded-full text-xs font-bold ${
+                state === "done" ? "bg-ok text-on-ink" : state === "now" ? "bg-coral text-ink" : "border border-rule"
+              }`}
+            >
+              {state === "done" ? "✓" : n}
+            </span>
+            {label}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

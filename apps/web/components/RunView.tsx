@@ -7,20 +7,20 @@ import { api, type RunPayload } from "@/lib/api";
 import { deriveProgress } from "@/lib/progress";
 import { PitchPackPanel } from "./PitchPackPanel";
 import { ProvenanceProvider } from "./Provenance";
-import { CityDetail, CityGrid, Shortlist } from "./Results";
+import { BestBets, CityDetail, CityGrid, LlmOnlyView, Shortlist } from "./Results";
 import { TourStack } from "./TourStack";
 import { Discoveries } from "./Discoveries";
-import { AgentLabel, Button, buttonClass } from "./ui";
+import { AgentLabel, Button, SectionTitle, buttonClass } from "./ui";
 
 const EVENT_TYPES = ["status", "agent_text", "tool_start", "tool_end", "needs_input", "result", "error"] as const;
 
 const TABS = [
-  { id: "shortlist", label: "Shortlist" },
-  { id: "grid", label: "Brand × City" },
+  { id: "shortlist", label: "Brands" },
   { id: "cities", label: "Cities" },
-  { id: "pitch", label: "Pitch pack" },
+  { id: "compare", label: "Compare" },
 ] as const;
-type Tab = (typeof TABS)[number]["id"];
+// The pitch is a focused view opened from a brand, not a tab.
+type Tab = (typeof TABS)[number]["id"] | "pitch";
 
 export function RunView({ runId }: { runId: string }) {
   const [data, setData] = useState<RunPayload | null>(null);
@@ -168,6 +168,7 @@ export function RunView({ runId }: { runId: string }) {
   const openPitch = (id: string) => {
     setPitchBrand(id);
     setTab("pitch");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const openCity = (c: string) => {
     setCity(c);
@@ -177,18 +178,20 @@ export function RunView({ runId }: { runId: string }) {
   return (
     <ProvenanceProvider>
       <main className="flex flex-1 flex-col lg:flex-row">
-        {/* The ink column runs the page's full height; the rail sticks inside it. */}
-        <div className="bg-ink lg:shrink-0">
-          <TourStack data={view} progress={shown} quiet={staging} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
-        </div>
+        {/* While the agent works, the ink rail shows the tour; finished results get the full width. */}
+        {(staging || run.status === "running" || run.status === "needs_input") && (
+          <div className="bg-ink lg:shrink-0">
+            <TourStack data={view} progress={shown} quiet={staging} selectedCity={tab === "cities" ? city : null} onSelectCity={openCity} />
+          </div>
+        )}
 
-        <div className="min-w-0 flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
+        <div className="mx-auto w-full min-w-0 max-w-[76rem] flex-1 px-4 pb-16 pt-6 sm:px-8 lg:pt-8">
           <header className="max-w-[72rem]">
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
               <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
               {data.run.status === "done" && !staging && events.length > 0 && (
-                <Button variant="secondary" onClick={startReplay}>
-                  Watch it work
+                <Button variant="ghost" onClick={startReplay}>
+                  ▶ Replay how Overlap did it
                 </Button>
               )}
             </div>
@@ -198,7 +201,9 @@ export function RunView({ runId }: { runId: string }) {
                 <>
                   {" · "}
                   <span className="text-evidence">
-                    {run.grounding.checked - run.grounding.violations.length} of {run.grounding.checked} figures traced to Qloo lookups
+                    {run.grounding.violations.length === 0
+                      ? "✓ every brand and venue checked against Qloo"
+                      : `${run.grounding.checked - run.grounding.violations.length} of ${run.grounding.checked} brands and venues checked against Qloo`}
                   </span>
                 </>
               )}
@@ -232,9 +237,23 @@ export function RunView({ runId }: { runId: string }) {
             />
           )}
 
-          {run.summary && !staging && <Summary text={run.summary} />}
+          {hasResults && tab !== "pitch" && <BestBets data={data} />}
+          {run.summary && !staging && tab !== "pitch" && <Summary text={run.summary} />}
 
-          {hasResults && (
+          {hasResults && tab === "pitch" && (
+            <div className="pt-6">
+              <button
+                type="button"
+                onClick={() => setTab("shortlist")}
+                className="mb-4 text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+              >
+                ← Back to all brands
+              </button>
+              <PitchPackPanel data={data} brandId={pitchBrand} onBrandChange={setPitchBrand} onChanged={refresh} />
+            </div>
+          )}
+
+          {hasResults && tab !== "pitch" && (
             <>
               <div role="tablist" aria-label="Results" className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-rule">
                 {TABS.map((t) => (
@@ -248,15 +267,21 @@ export function RunView({ runId }: { runId: string }) {
                     className="-mb-px shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-ink-soft transition-colors hover:text-ink aria-selected:border-ink aria-selected:text-ink"
                   >
                     {t.label}
-                    {t.id === "pitch" && data.pitches.some((p) => p.approved) && <span className="ml-1.5 text-ok">· approved</span>}
                   </button>
                 ))}
               </div>
               <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-6">
-                {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} onChanged={refresh} />}
-                {tab === "grid" && <CityGrid data={data} onCity={openCity} />}
+                {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} />}
                 {tab === "cities" && city && <CityDetail data={data} city={city} onCity={setCity} />}
-                {tab === "pitch" && <PitchPackPanel data={data} brandId={pitchBrand} onBrandChange={setPitchBrand} onChanged={refresh} />}
+                {tab === "compare" && (
+                  <div className="grid gap-14">
+                    <CityGrid data={data} onCity={openCity} />
+                    <section>
+                      <SectionTitle title="With Qloo vs without" hint="What the same AI picks with no Qloo fan data" />
+                      <LlmOnlyView data={data} onChanged={refresh} />
+                    </section>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -269,16 +294,18 @@ export function RunView({ runId }: { runId: string }) {
 function Summary({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className="mt-5 max-w-[62ch]">
-      <p className={`leading-relaxed ${open ? "" : "line-clamp-3"}`}>
-        <span className="mr-1.5">
-          <AgentLabel />
-        </span>
-        {text}
-      </p>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="mt-1 text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
-        {open ? "Show less" : "Read the full summary"}
+    <section className="mt-3 max-w-[62ch]">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+        {open ? "Hide Overlap's notes" : "Read Overlap's notes"}
       </button>
+      {open && (
+        <p className="mt-2 leading-relaxed">
+          <span className="mr-1.5">
+            <AgentLabel />
+          </span>
+          {text}
+        </p>
+      )}
     </section>
   );
 }
