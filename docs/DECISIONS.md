@@ -17,7 +17,7 @@ A typed client with our own status mapping, cache and provenance log. No extra p
 One loop per run that pauses with `ask_user` on ambiguous artists; the pitch pack is a separate on-demand call per brand.
 *Rejected:* a deterministic pipeline with an LLM writer only; staged sub-loops.
 
-### D5. Overlap score = Qloo brand affinity × 100 (2026-10-15)
+### D5. Fan fit (stored as overlap score) = Qloo brand affinity × 100 (2026-10-15)
 `/v2/analysis/compare` returns no score, and artist and brand tags don't share a vocabulary. Affinity is a raw Qloo value; city fit comes from localised rankings.
 *Rejected:* our own composite formula.
 
@@ -49,26 +49,29 @@ One-line pitch, three reasons, every city with an activation, sendable email (pl
 Any edit withdraws approval, so the exported text is exactly what was approved.
 
 ### D15. LLM-only comparison: same model, no Qloo, matched by name (2026-10-27)
-A switch on the shortlist asks the agent's own model the same question with only the tour, cities and categories, and shows which picks the Qloo-grounded shortlist backs and which high-ranking Qloo brands the model missed. Generated on demand, cached on the run. *Rejected:* a stronger model as the baseline (that would measure model size, not Qloo).
+"With Qloo vs without" (originally a switch on the shortlist, now on the Compare tab) asks the agent's own model the same question with only the tour, cities and categories, and shows which picks the Qloo-grounded brand list backs and which high-ranking Qloo brands the model missed. Generated on demand, cached on the run. *Rejected:* a stronger model as the baseline (that would measure model size, not Qloo).
 
 ### D16. Hosting: everything on the user's server with Docker Compose (2026-10-15)
-Postgres + API + web in Docker Compose on the user's server (`prod-host`, `/srv/overlap`), behind the host's Apache with a certbot certificate (`/api/*` → API), matching the other projects there. Pushes to `main` deploy through GitHub Actions with a forced-command deploy key. Dev uses an existing local Postgres container.
+Postgres + API + web in Docker Compose on a single VPS, behind a reverse proxy with a Let's Encrypt certificate (`/api/*` → API). GitHub Actions deploys on push to `main`. Dev uses an existing Postgres container.
 *Rejected:* Vercel + Railway.
 
-### D17. Repository private for now; `RESEARCH.md` never committed (2026-10-15)
-The research notes include judge analysis; the repo goes public only after a history check for keys and Qloo data.
+### D17. Repository private until a history check; private notes never committed (2026-10-15)
+Private research notes stay local and gitignored; the repo goes public only after a history check for keys and Qloo data.
 
 ### D18. Visual world: Tour Shirt (2026-10-27)
-Chosen in an Impeccable direction round (seed 6e945d4c) over Festival Bill and Grid Specimen: the tour's cities stacked in condensed caps on an Ink rail, printing from outline to solid ink as the agent finishes each city. Ink/Paper/Coral from the brand kit, blue for Qloo evidence, Coral only for actions and decisions. Documented in `apps/web/DESIGN.md`; contract in `apps/web/.impeccable/surfaces/apps-web.md`.
+Chosen in an Impeccable direction round (seed 6e945d4c) over Festival Bill and Grid Specimen: the tour's cities stacked in condensed caps on an Ink rail, printing from outline to solid ink as the agent finishes each city. Ink/Paper/Coral from the brand kit, blue for Qloo evidence, Coral only for actions and decisions. Documented in `apps/web/DESIGN.md`; contract in `apps/web/.impeccable/surfaces/apps-web.md` (written for the first layout; DESIGN.md is current).
 
 ### D19. The agent is a black box on screen (2026-10-27)
 At the user's request the UI shows short plain lines of what the agent is doing, never its reasoning text or tool names. Provenance (every Qloo request and result) stays one click away on every number.
 
 ### D20. The wait is a live 3D tour, not a log or a video (2026-10-27)
-While a run works the screen shows one stage: the seller's own cities as a route, a tour bus driving to each city as the agent reaches it, skylines that print in, brand tags as rankings land. It is rendered live (three.js) because a pre-rendered video cannot show the user's cities; Blender builds the assets. Lists wait for the results. Demo results open with a replay of the ride. *Rejected:* two growing lists of findings (too much to take in), a looping video.
+While a run works the screen shows one stage: the seller's own cities as a route, a tour bus driving to each city as the agent reaches it, skylines that print in, brand tags as rankings land. It is rendered live (three.js) because a pre-rendered video cannot show the user's cities; Blender builds the assets. Lists wait for the results. Example results open with a replay of the ride. *Rejected:* two growing lists of findings (too much to take in), a looping video.
 
 ### D21. The PDF is the sendable version (2026-10-27)
 Branded PDF; the "Seller notes (internal)" section is left out of the PDF and the email draft.
 
 ### D22. Release flow: verify locally, then push (2026-10-27)
-Every push to `main` deploys, so work is committed locally and verified on localhost against the dev database (SSH tunnel to the dev Postgres on the server); pushes happen in batches once verified.
+Every push to `main` deploys, so work is committed locally and verified on localhost against the dev database; pushes happen in batches once verified.
+
+### D23. Plain-language results for a first-time seller (2026-10-28)
+The web UI was redesigned around three steps (Enter your tour → Get a brand list → Send a pitch). Results lead with a short answer (the safest bets: brands in the top 3 for their type in most of the tour's cities), then three tabs: Brands, Cities, Compare (brand by city and With Qloo vs without). The pitch moved from a tab to its own view opened from a brand. The city rail shows only while the agent works or replays. Labels use plain words ("fan fit", "Show the data") instead of internal terms ("overlap score", "Shortlist").

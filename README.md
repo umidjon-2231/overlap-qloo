@@ -2,9 +2,13 @@
 
 > Tell us your tour. We tell you which brands to pitch, in which cities, and why.
 
-**Live demo: https://overlap.u.co.uz** (no login; open a demo tour to watch Overlap work, then explore the results).
+**Live demo: https://overlap.u.co.uz** (no login; open an example to replay how Overlap worked, then explore the results).
 
-Overlap is a sell-side sponsorship agent for artist tours and festivals. A sponsorship seller enters a property (artists, cities, brand categories). A Claude agent works through Qloo's taste graph: it finds brands the fans already love, checks how each city changes the picture, maps where fans gather, finds local activation partners near them, and drafts a pitch pack the seller edits and approves before anything leaves the app.
+![Overlap results: the short answer and brands ranked by fan fit](docs/img/results.png)
+
+Ask a language model which brands to pitch and you get confident, generic names; Overlap's picks come from Qloo's taste graph, and one click shows which of the model's own picks have no Qloo evidence and which strong fits it missed.
+
+Overlap is a sell-side sponsorship agent for artist tours and festivals. A sponsorship seller enters a property (artists, cities, brand categories). A Claude agent works through Qloo's taste graph: it finds brands the fans already love, checks how each city changes the picture, maps where fans gather, finds local activation partners near them, and drafts a pitch the seller edits and approves before anything leaves the app.
 
 Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). Product spec: [`PRODUCT.md`](PRODUCT.md) · Known limits: [`LIMITATIONS.md`](LIMITATIONS.md)
 
@@ -20,11 +24,11 @@ The **sponsorship seller** at a promoter, festival, venue group or artist manage
 
 ## What the seller gets
 
-1. **A ranked shortlist** of brands whose audience overlaps with the artist's fans (Qloo affinity), each with its Qloo evidence one click away and a labelled "Overlap suggests" note.
-2. **Brand × city**: each brand's position in each city's own Qloo ranking, with "national fit" where a city's local list omits it (never presented as weak fit).
-3. **City view**: where fans gather (heatmap hotspot and a "devoted pocket"), a plain-English crowd read, and local partner venues near the fans with an activation idea for each.
-4. **A pitch pack**: the pitch, why this brand, city by city, activations, measurement plan, a sendable outreach email and internal seller notes. The seller edits and approves; only then can it be exported as a branded PDF, Markdown or an email draft.
-5. **Qloo vs LLM-only**: a switch on the shortlist asks the same model the same question with no Qloo data, and shows which of its picks the taste graph backs up and which strong Qloo picks it missed.
+1. **The short answer**: the safest bets, meaning brands that rank in the top 3 for their type in most of the tour's cities.
+2. **Brands**: brands ranked by national fan fit (Qloo affinity × 100). Each card has an "Overlap suggests" note, the brand's rank among its type in each city ("Rank among Fashion brands: Los Angeles #1, Seattle #2", or "a national fit" where no city's local list has it), and "Show the data", which opens the Qloo lookup behind it.
+3. **Cities**: for each city, your brands' local ranks, the crowd in plain English, where fans gather (the biggest fan area and a hidden fan pocket) and local partner venues near the fans with an idea for each.
+4. **Compare**: a brand-by-city grid, and "With Qloo vs without": the same model asked the same question with no Qloo data, showing which of its picks the taste graph backs up and which strong Qloo picks it missed.
+5. **A pitch** for any brand: the pitch, why this brand, city by city, activations, measurement plan, a sendable outreach email and internal seller notes. The seller edits and approves; only then can it be opened as an email, downloaded as a branded PDF or copied as text.
 
 While the agent works, the seller watches one thing: their own tour as a route, with the Overlap tour bus driving to each city as the agent reaches it, each city printing in as its evidence is read, and the brands that rank there popping up. The agent is shown as a black box: one plain line of what it is doing, never its internal reasoning.
 
@@ -40,7 +44,7 @@ While the agent works, the seller watches one thing: their own tour as a route, 
 | `local_partners` | `/v2/insights` place + `POINT` + radius + place tags | Venues near the fan hotspot for activations |
 | `shared_themes` | `/v2/analysis/compare` | Shared taste between festival headliners |
 
-Every Qloo call is logged with its redacted request and normalised result. The agent's report cites call IDs; the server looks up every number from those logs and counts anything it cannot find (the grounding line on each run, e.g. "24 of 24 figures traced to Qloo lookups").
+Every Qloo call is logged with its redacted request and normalised result. The agent's report cites call IDs; the server checks every brand and partner venue it names against the logged result of the call it cites, drops anything it cannot find, and takes all numbers from those logs rather than from the model. Each run shows the outcome under its title ("✓ every brand and venue checked against Qloo").
 
 ### Request → result example (redacted)
 
@@ -74,9 +78,9 @@ In the app this becomes "Adidas #1 in Mexico City's local fashion ranking", with
 ```
 Seller input ──► Claude agent (tool loop, server-side) ──► submit_report ──► stored evidence ──► UI
                   (Haiku 5.5: tools above, in parallel, within call and token budgets)
-                         │ every Qloo call logged ──► numbers looked up from the logs (grounding check)
+                         │ every Qloo call logged ──► brands and venues checked, numbers taken from the logs (grounding check)
                          │ run events ──► SSE ──► live tour stage
-Pitch pack: Claude (Sonnet 5.5) drafts from an evidence pack rebuilt from logged calls ──► seller edits ──► approve ──► PDF / Markdown / email draft
+Pitch: Claude (Sonnet 5.5) drafts from an evidence pack rebuilt from logged calls ──► seller edits ──► approve ──► email / PDF / text
 ```
 
 - **Qloo is the evidence, the agent is the analyst.** Interpretation is always labelled.
@@ -84,7 +88,7 @@ Pitch pack: Claude (Sonnet 5.5) drafts from an evidence pack rebuilt from logged
 - **Honest coverage.** Thin or empty data shows as such, never filled by the model.
 - **Aggregate taste only.** Inputs are entity IDs, tags and cities. No personal data is collected or sent to Qloo.
 
-Model choice came from a measured bake-off (groundedness, tool use, cost, latency): [`docs/BAKEOFF.md`](docs/BAKEOFF.md). A typical run costs about $0.01–0.02 in Claude usage and 20–50 Qloo calls; a pitch pack about $0.03.
+Model choice came from a measured bake-off (groundedness, tool use, cost, latency): [`docs/BAKEOFF.md`](docs/BAKEOFF.md). A run costs about one cent in Claude usage ($0.007–0.014 on the production example runs, estimated from recorded token usage) and 18–51 Qloo lookups; a pitch about $0.03.
 
 ## Layout
 
@@ -110,7 +114,7 @@ Useful scripts:
 
 | Command | What it does |
 |---|---|
-| `pnpm agent <presetId>` | Run a demo preset headless, print the trace; the result becomes the preset's cached result |
+| `pnpm agent <presetId>` | Run an example preset headless, print the trace; the result becomes the preset's cached result |
 | `pnpm tool <name> '<json>'` | Run one agent tool against Qloo, e.g. `pnpm tool resolve_artist '{"name":"Khruangbin"}'` |
 | `pnpm probe [presetId]` | Coverage check for the demo presets |
 | `pnpm bakeoff` | Compare models × effort × toolsets |
@@ -120,11 +124,11 @@ Keys live only in `.env` and are read by the API; the browser never sees them. Q
 
 ## Production
 
-Live at **https://overlap.u.co.uz**, on one server with Docker Compose (Postgres, API, web) behind Apache with a Let's Encrypt certificate. Every push to `main` is typechecked and deployed by GitHub Actions (`.github/workflows/deploy.yml` → `scripts/deploy.sh`). See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+Live at **https://overlap.u.co.uz**: a single VPS running Docker Compose (Postgres, API, web) behind a reverse proxy with a Let's Encrypt certificate. GitHub Actions typechecks and deploys on push to `main` (`.github/workflows/deploy.yml` → `scripts/deploy.sh`). See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## What was built during the submission period
 
-Everything in this repository was built during the hackathon (October 2026): the Qloo layer, agent, grounding check, pitch packs, the web app and its design system, the 3D assets and the deployment.
+Everything in this repository was built during the hackathon (October 2026): the Qloo layer, agent, grounding check, pitches, the web app and its design system, the 3D assets and the deployment.
 
 ## License
 

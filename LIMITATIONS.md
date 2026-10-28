@@ -22,6 +22,6 @@ What Overlap does not do, and where its evidence is thin. Shown here so nobody h
 
 ## Demo
 
-- One server, demo limits: at most 3 runs at once and 8 new runs per visitor per hour. Demo tours open a recent stored result (refreshed on deploy); "Re-run live" starts a new run.
+- One server, demo limits: at most 3 runs at once and 8 new runs per visitor per hour. Examples open a stored result (kept for 30 days on the live demo) and replay how it was made; "Or try your own tour" starts a new live run.
 - No accounts: runs are visible to anyone with the link.
 - The run stage needs WebGL; without it a simpler animation plays and everything else works.

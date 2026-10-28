@@ -188,7 +188,7 @@ Density is real working density. Sellers read ranked brands, affinity numbers an
 The fixed brand kit (Knockout Venn logo, Ink, Paper, Coral) is the base of every surface; the logo sits on the Ink header as the paper-artwork ("dark") variant.
 
 **Key Characteristics:**
-- Paper work area, Ink shell (56px header, 336px rail), flat fields only.
+- Paper work area, Ink shell (56px header, and a 336px rail while the agent works or replays), flat fields only.
 - One condensed display voice in caps for the stack and headings; a neutral UI sans; tabular mono for every number with provenance.
 - Each spot colour has one job: Coral acts and decides, Evidence blue cites Qloo, green and amber mark coverage and approval state.
 - 1px ink rules for lists and tables, 2px ink rules under section titles; square or 2px corners.
@@ -199,11 +199,11 @@ The fixed brand kit (Knockout Venn logo, Ink, Paper, Coral) is the base of every
 Three fixed brand inks plus one evidence blue and two small state inks, printed flat on off-white cotton.
 
 ### Primary
-- **Signal Coral** (coral): the seller's next move and Overlap's decisions. Primary buttons (Find sponsors, Open result, Draft, Approve), the top-pick field on the shortlist, the outline marking the best local brand in the grid, the city line currently printing, and the live dot beside the agent's current line. Text on Coral is always Ink.
-- **Fired Coral** (coral-ink): Coral dark enough to read as text on Paper. Inline validation and error messages, "Use this" on the entity picker, list markers in the pitch pack, hover on city headers and recent-run links.
+- **Signal Coral** (coral): the seller's next move and Overlap's decisions. Primary buttons (Find sponsors, Write the pitch, Approve), "Open example →" on the example cards, the field behind the #1 brand card, the outline marking the best local brand in the grid, the city line currently printing, and the live dot beside the agent's current line. Text on Coral is always Ink.
+- **Fired Coral** (coral-ink): Coral dark enough to read as text on Paper. Inline validation and error messages, "Use this" on the entity picker, list markers in the pitch, hover on city headers in the Brand by city grid.
 
 ### Secondary
-- **Screenprint Blue** (evidence): anything that comes from Qloo. Overlap scores, local rank cells, coordinates, call chips, the "Qloo says" label, the grounding line under the run title, and the focus ring on Paper.
+- **Screenprint Blue** (evidence): anything that comes from Qloo. Fan fit scores, local rank cells, coordinates, call chips, the "Qloo says" label, the grounding line under the run title ("✓ every brand and venue checked against Qloo"), and the focus ring on Paper.
 - **Evidence Wash** (evidence-soft): the flat field behind call chips, taste tags and ranked city chips; blue text sits on it.
 
 ### Tertiary
@@ -211,12 +211,12 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 - **Mustard Amber** (warn): thin coverage marks and "Draft: needs your approval".
 
 ### Neutral
-- **Ink** (ink): text on Paper, the shell (header, rail, city panel, demo column), every structural rule, and the reversed state of selected items.
+- **Ink** (ink): text on Paper, the shell (header, rail, city panel, example cards), every structural rule, and the reversed state of selected items.
 - **Ink Two** (ink-2): hover field on rail rows.
 - **Faded Ink** (ink-soft): secondary text, hints, unselected tabs, ghost buttons.
 - **Cotton Paper** (paper): the page ground.
-- **Washed Paper** (paper-2): hover field on Paper controls and the pitch-pack blockquote.
-- **Sheet** (sheet): the brightest paper, for things the seller writes into or reads at length: inputs, the pitch-pack sheet, JSON in the provenance drawer.
+- **Washed Paper** (paper-2): hover field on Paper controls and the pitch blockquote.
+- **Sheet** (sheet): the brightest paper, for things the seller writes into or reads at length: inputs, the pitch sheet, JSON in the provenance drawer.
 - **Hairline** (rule): light dividers between rows inside an ink-ruled block, tab baseline, footers, scrollbars.
 - **Paper on Ink** (on-ink), **Faded Paper** (on-ink-soft), **Rail Rule** (on-ink-rule): text, secondary text and rules on Ink surfaces. Faded Paper is also the outline stroke of a city that has not printed yet.
 
@@ -225,7 +225,7 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 
 **The Qloo Is Blue Rule.** Every figure that traces to a Qloo lookup is Screenprint Blue or sits on Evidence Wash, and model interpretation never is. A seller can tell fact from suggestion by ink alone.
 
-**The Three Inks Rule.** Any one region prints in at most Ink, Paper and one spot colour. The top-pick row is Ink on Coral, so its evidence chips and rank chips reverse to Ink instead of turning blue.
+**The Three Inks Rule.** Any one region prints in at most Ink, Paper and one spot colour. The #1 brand card is Ink on Coral, so its evidence chips and rank chips reverse to Ink instead of turning blue.
 
 ## Typography
 
@@ -237,14 +237,15 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 **Character:** a merch-table display voice, tall and tight, over a quiet workhorse sans that never competes with it. Mono is reserved for numbers and identifiers a seller might need to check.
 
 ### Hierarchy
-- **Display hero** (800, 3.6rem mobile / 5.25rem sm / 6rem xl, 0.92): the home statement only.
+- **Display hero** (800, 3.4rem mobile / 5rem sm, 0.92): the home headline only ("Find sponsors for your tour.").
 - **Display city** (800, 3.5rem / 4.5rem, 0.92): the selected city's name on its Ink panel; "Printing the tour" (3.2rem / 4rem) while the agent works.
 - **Display stack** (800, 1.75rem mobile / 2.25rem desktop, 0.92): every city line on the rail. One size for the whole stack.
-- **Headline** (800 display caps, 1.9rem): section titles (Brands to pitch, Pitch pack, Your tour, Demo tours, Recent runs); also the rank numeral on brand rows. Display caps at 1.6rem for sub-sections inside a city; 2.4rem for demo tour names and the picker question.
-- **Title** (display wide, 700, 1.5rem to 2.4rem, leading tight): the run title h1 (2rem / 2.4rem), brand names on the shortlist (1.5rem), the brand heading in the pitch pack (1.6rem), the home sub-statement (1.5rem / 1.9rem).
-- **Body** (Inter 400, 1rem, 1.625): summaries and explanatory copy, held to 60 to 72ch. Pitch-pack prose runs at 0.95rem, line-height 1.6, 72ch.
+- **Headline** (800 display caps, 1.9rem): section titles (See an example, Or try your own tour, Brands to pitch, Brand by city, With Qloo vs without, Pitch for <Brand>); also the step numerals on the home page, the example names on their cards and the rank numeral on brand cards. Display caps at 1.6rem for sub-sections inside a city; 2.4rem for the picker question.
+- **Fit score** (800 display, 3rem, tabular): the fan fit number on each brand card, Screenprint Blue (Ink on the coral #1 card), labelled "Top fan fit" on #1, otherwise Excellent fit (90 and up), Strong fit (80 and up) or Good fit.
+- **Title** (display wide, 700, 1.5rem to 2.4rem, leading tight): the run title h1 (2rem / 2.4rem), the short answer ("Safest bets: …", 1.45rem), brand names on the brand cards (1.5rem), the brand heading in the pitch (1.6rem).
+- **Body** (Inter 400, 1rem, 1.625): summaries and explanatory copy, held to 60 to 72ch. Pitch prose runs at 0.95rem, line-height 1.6, 72ch.
 - **Body small** (Inter, 0.875rem): most UI: buttons and tabs (600), list rows, hints.
-- **Label** (Inter 600, 11px, 0.06em, uppercase): run-in provenance labels ("Qloo says", "Overlap suggests") at the start of a sentence, the status pill, and "Top pick" (700, 0.08em).
+- **Label** (Inter 600, 11px, 0.06em, uppercase): run-in provenance labels ("Qloo says", "Overlap suggests") at the start of a sentence, and the status pill.
 - **Data** (JetBrains Mono, 11px to 1rem, tabular): affinities, popularity, ranks (#3), call references, coordinates, the progress count.
 
 ### Named Rules
@@ -254,9 +255,9 @@ Three fixed brand inks plus one evidence blue and two small state inks, printed 
 
 ## Layout
 
-A shell-and-work split. The Ink header is 56px tall with the logo left and "New run" right. On a run, a 336px Ink rail is fixed to the left at the lg breakpoint (1024px), sticky to the viewport below the header and scrolling internally; the Paper work area fills the rest with 16px side padding (32px from sm). Below lg the rail collapses to a horizontally scrolling strip of city lines above the work area, and the live agent line moves under the run title.
+A shell-and-work split while the agent works. The Ink header is 56px tall with the logo left and "New run" right. While a run works or replays, a 336px Ink rail sits on the left at the lg breakpoint (1024px), sticky to the viewport below the header and scrolling internally; the Paper work area fills the rest with 16px side padding (32px from sm). Below lg the rail collapses to a horizontally scrolling strip of city lines above the work area. Finished results drop the rail and take the full width.
 
-The work area reads top to bottom: run title, a one-line meta row with the grounding count in blue, a three-line clamped summary that expands, then a single tab row (Shortlist, Brand × City, Cities, Pitch pack). Content is capped at 72rem for the header and 62 to 80ch for prose. The home page is a two-column grid at lg: a flexible Paper column for the statement and form, and a 34rem Ink column of demo tours.
+Finished results read top to bottom: the run name, a one-line subtitle ("5 cities · Phoebe Bridgers · ✓ every brand and venue checked against Qloo", the check in blue), the ghost button "▶ Replay how Overlap did it", the short answer ("Safest bets: …"), "Read Overlap's notes" (the agent's summary, folded), then a single tab row (Brands, Cities, Compare). A pitch opens as its own view from a brand, with "← Back to all brands". Content is capped at 72rem for the header and 62 to 80ch for prose. The home page is one column capped at 64rem: the headline, three numbered steps, "See an example" as three Ink cards in a row from md, then "Or try your own tour" with the form.
 
 Rhythm runs on a 4px base: 4 and 8px inside controls and chip clusters, 16px between related blocks, 24px between a tab row and its panel, 32 to 48px between sections. Lists are full-bleed rows separated by rules, not padded cards.
 
@@ -277,7 +278,7 @@ Focus is a 2px Screenprint Blue outline offset 2px on Paper, and a 2px Coral out
 
 Square by default. Controls and chips take a 2px corner, which reads as a cut edge rather than a rounded one; rows, fields, panels and tables are fully square. The only circles are the 6px status and live dots. Coverage is a small printed square: filled for strong, half-filled for thin, outlined for none. Icons are inline line SVGs with square caps, sized 10 to 12px, and only where they say something (done check, external map link).
 
-Rules carry the structure: a 2px Ink rule under section titles and above error and empty-pitch blocks, 1px Ink rules between shortlist rows, partner rows and hotspot rows, and 1px Hairline rules between rows inside an already-ruled block.
+Rules carry the structure: a 2px Ink rule under section titles and above error and empty-pitch blocks, 1px Ink rules between brand cards, partner rows and hotspot rows, and 1px Hairline rules between rows inside an already-ruled block.
 
 ## Components
 
@@ -285,38 +286,39 @@ Rules carry the structure: a 2px Ink rule under section titles and above error a
 Printed tags: compact, flat, semibold.
 - **Shape:** cut corners (2px), 8px by 14px padding, 0.875rem semibold Inter.
 - **Primary:** Ink text on Coral. Hover reverses to Paper on Ink. Used once per decision point.
-- **Secondary:** 1px Ink outline, Ink text, transparent. Hover fills Ink with Paper text. Used for navigation into deeper views and for exports.
-- **Ghost:** Faded Ink text, underline on hover (offset 4px). Used for toggles like "Show Qloo details", "Rewrite draft", "Read the full summary".
+- **Secondary:** 1px Ink outline, Ink text, transparent. Hover fills Ink with Paper text. Used for navigation into deeper views and for exports (Open as email, Download PDF, Copy text).
+- **Ghost:** Faded Ink text, underline on hover (offset 4px). Used for toggles and secondary moves like "Show the data", "Read Overlap's notes", "▶ Replay how Overlap did it", "Edit text", "Write it again", "More options".
 - **On Ink:** 1px Rail Rule outline with Paper text; hover reverses to Ink on Paper (the header's New run).
 - **Disabled:** 40% opacity, no pointer events. Exports stay visibly disabled until the pitch is approved.
 
 ### Chips
-- **Toggle chips** (brand categories, mobile city picker): 1px Ink outline, 2px corners; pressed reverses to Paper on Ink; hover on Paper takes Washed Paper.
-- **Segmented control** (Artist tour / Festival): two square buttons in one 1px Ink frame, pressed reverses.
-- **Evidence chips** (Qloo call references, taste tags, ranked cities): Screenprint Blue mono or sans on Evidence Wash, 2px corners; call chips reverse to Paper on Blue on hover and open the provenance drawer. On a Coral field they print as Paper on Ink instead.
+- **Toggle chips** (brand types under "More options", the city switcher): 1px Ink outline, 2px corners; pressed reverses to Paper on Ink; hover on Paper takes Washed Paper.
+- **Segmented control** (Tour / Festival, under "More options"): two square buttons in one 1px Ink frame, pressed reverses.
+- **Evidence chips** (Qloo call references, "What these fans like" tags, ranked cities): Screenprint Blue mono or sans on Evidence Wash, 2px corners; call chips reverse to Paper on Blue on hover and open the provenance drawer. On a Coral field they print as Paper on Ink instead.
 
 ### Cards / Containers
 There are no cards. Containers are flat fields:
-- **Top-pick row:** the first shortlist row prints on Coral edge to edge, Ink text throughout.
-- **City panel:** an Ink field (24px by 28px padding) with the city name in display caps and local brand ranks.
-- **Pitch sheet:** a Sheet field (24px by 32px) holding the rendered pitch or its Markdown editor.
+- **Brand card:** a full-width row on a 1px Ink rule: rank, name and category, the "Overlap suggests" note, the brand's rank among its type in each city, the main action (Write the pitch / Open pitch draft / Pitch ready ✓), "Show the data", and the fit score on the right. The #1 card prints on Coral edge to edge, Ink text throughout.
+- **Example card:** an Ink field on the home page: "Tour ·" or "Festival ·", the artists in display caps, the cities, and "Open example →" in Coral.
+- **City panel:** an Ink field (24px by 28px padding) with the city name in display caps, the strong/thin fan data mark and "Your brands here (rank among their type)".
+- **Pitch sheet:** a Sheet field (24px by 32px) holding the rendered pitch or its text editor.
 
 ### Inputs / Fields
 - **Style:** Sheet ground, 1px Ink border, 2px corners, 10px by 12px padding, 1rem text, Faded Ink placeholder. Labels sit above in 0.875rem semibold, hints below in 0.75rem Faded Ink.
 - **Focus:** 2px Screenprint Blue outline, no offset.
 - **Error:** a Fired Coral line of text beside the submit button; the field itself does not change colour.
-- **Markdown editor:** Hairline border on Sheet, mono 0.75rem; focus darkens the border to Ink.
+- **Pitch text editor** (Markdown): Hairline border on Sheet, mono 0.75rem; focus darkens the border to Ink.
 
 ### Navigation
 - **Header:** Ink bar, 56px, logo 28px tall.
-- **Tabs:** 0.875rem semibold, Faded Ink at rest, Ink on hover; selected takes Ink text and a 2px Ink underline sitting on a 1px Hairline baseline. The Pitch pack tab appends "· approved" in Field Green once a pitch is approved.
-- **Pitch-pack brand list:** full-width rows on 1px Ink rules; current reverses to Paper on Ink.
+- **Tabs:** 0.875rem semibold, Faded Ink at rest, Ink on hover; selected takes Ink text and a 2px Ink underline sitting on a 1px Hairline baseline. - **Pitch stepper:** Write → Check & approve → Send; the current step is Ink on Coral, done steps Paper on Field Green, later steps outlined in Hairline.
+- **Pitch brand list:** on desktop, full-width rows on 1px Ink rules beside the pitch; current reverses to Paper on Ink. Phones get a brand dropdown instead.
 
 ### Tour Stack (signature)
-The rail lists each city as a button in display caps at one size. A queued city is outline only (1px Faded Paper stroke, transparent fill). While the agent works on it, the stroke and a sweeping fill turn Coral, the fill wiping back and forth like a squeegee (1.6s, alternating). When the city is finished the solid Paper ink wipes in left to right (900ms, ease-out-expo), staggered 140ms down the stack on first paint. The selected city reverses: a Paper row with Ink type. Beneath each line, the top two local brand ranks print in small Faded Paper text with mono rank numbers. At the rail's foot, the last four plain-language agent lines enter with a 6px rise (420ms), the current one marked by a blinking Coral dot, above a mono progress count ("4/6 cities · 38 Qloo lookups"). Reduced motion freezes the working city at half printed and removes all animation.
+The rail shows only while the agent works or replays; finished results take the full width. It lists each city as a button in display caps at one size. A queued city is outline only (1px Faded Paper stroke, transparent fill). While the agent works on it, the stroke and a sweeping fill turn Coral, the fill wiping back and forth like a squeegee (1.6s, alternating). When the city is finished the solid Paper ink wipes in left to right (900ms, ease-out-expo), staggered 140ms down the stack on first paint. The selected city reverses: a Paper row with Ink type. Beneath each line, the top two local brand ranks print in small Faded Paper text with mono rank numbers. At the rail's foot, the last four plain-language agent lines enter with a 6px rise (420ms), the current one marked by a blinking Coral dot, above a mono progress count ("4/6 cities · 38 Qloo lookups"). Reduced motion freezes the working city at half printed and removes all animation.
 
 ### Tour Route stage (run in progress)
-While a run works, the main area holds one stage and nothing else: a full-bleed Paper band between 1px Ink rules (15rem tall on phones, 24rem from `sm`), a single status line below it (1.125rem semibold, Coral live dot) and one mono counter line. Inside, an orthographic three.js scene in unlit flat inks: an Ink road with a dashed Paper centre line through the seller's cities in tour order; each stop is a Paper disc with an Ink ring that turns solid Ink when printed; behind it the city's landmark in low-poly primitives (26 well-known tour cities, `components/landmarks.ts`: Elizabeth Tower and the Eye, Willis Tower, the KIO towers…) with a low back row of blocks, or for any other city 4–6 blocks shaped from its name, outlined in Ink while queued, Coral while the agent is there, solid Ink with Paper edges once printed. The Overlap tour bus (Ink body, Paper window band, Coral stripe, the mark on its sides, Ink edge lines) drives to each city as the agent reaches it, dwells 1.6s with a Coral pulse ring, then moves on; the camera follows and pulls back over the whole route at the end, then the results open. City labels use the Tour Stack print (outline → solid Ink on Paper); up to two brand tags (Sheet chip, 1px Ink border, rank in blue mono) pop in above a visited city. Reduced motion: the bus jumps between stops and nothing pulses. No WebGL: the screen-print loop plays instead. Lists and detail never appear on the stage.
+While a run works, the main area holds one stage and nothing else: a full-bleed Paper band between 1px Ink rules (15rem tall on phones, 24rem from `sm`), a single status line below it (1.125rem semibold, Coral live dot), one mono counter line and "Skip to results". Inside, an orthographic three.js scene in unlit flat inks: an Ink road with a dashed Paper centre line through the seller's cities in tour order; each stop is a Paper disc with an Ink ring that turns solid Ink when printed; behind it the city's landmark in low-poly primitives (26 well-known tour cities, `components/landmarks.ts`: Elizabeth Tower and the Eye, Willis Tower, the KIO towers…) with a low back row of blocks, or for any other city 4–6 blocks shaped from its name, outlined in Ink while queued, Coral while the agent is there, solid Ink with Paper edges once printed. The Overlap tour bus (Ink body, Paper window band, Coral stripe, the mark on its sides, Ink edge lines) drives to each city as the agent reaches it, dwells 1.6s with a Coral pulse ring, then moves on; the camera follows and pulls back over the whole route at the end, then the results open. City labels use the Tour Stack print (outline → solid Ink on Paper); up to two brand tags (Sheet chip, 1px Ink border, rank in blue mono) pop in above a visited city. Reduced motion: the bus jumps between stops and nothing pulses. No WebGL: the screen-print loop plays instead. Lists and detail never appear on the stage.
 
 ### Status Pill
 6px dot plus an 11px uppercase label: Working (blue on Paper, Coral on Ink, blinking dot), Done (green on Paper, Paper on Ink), Needs your pick (Coral).
@@ -327,7 +329,7 @@ Display caps at 1.9rem over a 2px Ink rule, with an optional Faded Ink hint on t
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep work on Paper and the shell on Ink; put a city, a demo column or a drawer header on Ink only when it is the thing being looked at.
+- **Do** keep work on Paper and the shell on Ink; put a city, an example card or a drawer header on Ink only when it is the thing being looked at.
 - **Do** show state by ink and reversal: outline to solid, Faded to full, Paper on Ink for current.
 - **Do** set every Qloo-derived number in tabular mono and in Screenprint Blue (or on Evidence Wash), with a call chip that opens its source.
 - **Do** label model interpretation with the run-in "Overlap suggests" label and keep it in Ink, never blue.

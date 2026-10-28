@@ -8,7 +8,7 @@ Rules the product, the agent and contributors must follow. Prompts in `apps/api/
 2. **Human approves, agent drafts.** Nothing is sent, booked or committed by the app. Export unlocks only after approval.
 3. **Honest about coverage.** Empty or thin data is shown as a badge, never filled by the model.
 4. **Aggregate taste only.** No personal data is collected or sent to Qloo.
-5. **Deliverable over dashboard.** The output is a pitch pack a seller can use.
+5. **Deliverable over dashboard.** The output is a pitch a seller can use.
 
 ## Data and safety (Qloo safe use)
 
@@ -45,11 +45,11 @@ Rules the product, the agent and contributors must follow. Prompts in `apps/api/
 
 - Avoid in demos: Tashkent as the hero city, football clubs, pricing/fees/fan data, invented percentages, real brand logos implying endorsement.
 - Festival presets use fictional festival names with real headliners.
-- Public demo limits: at most 3 concurrent runs, 8 runs per IP per hour; presets load cached results (24 h) unless re-run.
+- Public demo limits: at most 3 concurrent runs, 8 runs per IP per hour; examples load a cached result (`PRESET_CACHE_HOURS`: 24 h by default, 30 days in production); "Or try your own tour" starts a live run.
 
 ## Repository rules
 
-- `RESEARCH.md` stays local (gitignored). Zip archives are ignored; unpacked assets live in `brand/`.
+- Private research notes stay local (gitignored). Zip archives are ignored; unpacked assets live in `brand/`.
 - `.env` is never committed; `.env.example` lists every variable.
 - Before making the repo public: check the history for keys and Qloo data.
 - Next.js 16 has breaking changes: read `apps/web/node_modules/next/dist/docs/` before changing web code.
