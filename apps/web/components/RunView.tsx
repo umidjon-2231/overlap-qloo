@@ -190,7 +190,7 @@ export function RunView({ runId }: { runId: string }) {
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
               <h1 className="display-wide text-[2rem] leading-tight sm:text-[2.4rem]">{run.propertyName}</h1>
               {data.run.status === "done" && !staging && events.length > 0 && (
-                <Button variant="ghost" onClick={startReplay}>
+                <Button variant="ghost" onClick={startReplay} className="px-0">
                   ▶ Replay how Overlap did it
                 </Button>
               )}
@@ -274,7 +274,7 @@ export function RunView({ runId }: { runId: string }) {
                 {tab === "shortlist" && <Shortlist data={data} onPitch={openPitch} onCity={openCity} />}
                 {tab === "cities" && city && <CityDetail data={data} city={city} onCity={setCity} />}
                 {tab === "compare" && (
-                  <div className="grid gap-14">
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-14">
                     <CityGrid data={data} onCity={openCity} />
                     <section>
                       <SectionTitle title="With Qloo vs without" hint="What the same AI picks with no Qloo fan data" />
