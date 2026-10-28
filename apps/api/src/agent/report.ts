@@ -25,8 +25,9 @@ export const reportSchema = z.object({
             message: "Placeholder text is not allowed. Remove brands you do not recommend instead of submitting them.",
           })
           .describe(
-            "One or two sentences on why this brand fits the whole property: lead with national standing, then name local ranks as extra proof " +
-              "(e.g. '#1 locally in Los Angeles'). Do not list cities where it is not in the local top, never call that a gap, and never limit the brand to some cities.",
+            "One or two sentences on why this brand fits the whole property: who its customers are and what kind of partnership suits this crowd. " +
+              "Write no numbers: no ranks, affinity scores or city-by-city lists (the app shows those from the logged results, and a restated number can drift from them). " +
+              "You may say it is 'top-ranked locally in most cities' or 'a national fit'. Never call missing local data a gap, and never limit the brand to some cities.",
           ),
       }),
     )

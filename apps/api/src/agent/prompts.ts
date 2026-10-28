@@ -17,6 +17,7 @@ Rules:
 - Never describe audiences by sensitive traits (sexual orientation, religion, politics, health, ethnicity).
 - Do not send personal data to tools. Inputs are entity IDs, cities, tags and coordinates only.
 - Work efficiently: run independent tool calls in parallel in one turn. You have a limited tool budget.
+- In prose (summary, why notes, crowd profiles, ideas) never restate a rank or affinity score: the app prints those from the logs. Describe them in words ("strong local support across the tour", "a national fit").
 - Finish by calling submit_report exactly once. Keep "why" notes and crowd profiles short, concrete and grounded in the evidence you cite.
 `.trim();
 
