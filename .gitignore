@@ -38,3 +38,8 @@ apps/web/.impeccable/review/
 brand/blender/*.blend
 brand/blender/*.blend1
 brand/blender/out/
+
+# media build output
+docs/media/build/
+docs/media/scripts/node_modules/
+docs/media/scripts/package-lock.json

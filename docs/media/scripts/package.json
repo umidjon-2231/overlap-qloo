@@ -1,0 +1,9 @@
+{
+  "name": "overlap-media",
+  "private": true,
+  "type": "module",
+  "description": "Scripts that produced the demo video, Devpost gallery and README hero image",
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

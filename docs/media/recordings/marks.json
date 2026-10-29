@@ -1,0 +1,92 @@
+{
+ "replay": [
+  {
+   "label": "start",
+   "t": 0.843
+  },
+  {
+   "label": "results",
+   "t": 29.523
+  }
+ ],
+ "results": [
+  {
+   "label": "start",
+   "t": 2.735
+  },
+  {
+   "label": "data",
+   "t": 11.069
+  },
+  {
+   "label": "drawer",
+   "t": 13.611
+  }
+ ],
+ "compare": [
+  {
+   "label": "start",
+   "t": 3.072
+  },
+  {
+   "label": "click",
+   "t": 4.875
+  },
+  {
+   "label": "averages",
+   "t": 9.669
+  },
+  {
+   "label": "modelo",
+   "t": 13.589
+  }
+ ],
+ "cities": [
+  {
+   "label": "start",
+   "t": 2.77
+  },
+  {
+   "label": "austin",
+   "t": 5.367
+  }
+ ],
+ "own": [
+  {
+   "label": "start",
+   "t": 2.034
+  },
+  {
+   "label": "typed",
+   "t": 5.986
+  }
+ ],
+ "home": [
+  {
+   "label": "start",
+   "t": 2.221
+  },
+  {
+   "label": "click",
+   "t": 10.643
+  }
+ ],
+ "pitch": [
+  {
+   "label": "start",
+   "t": 2.934
+  },
+  {
+   "label": "writing",
+   "t": 5.725
+  },
+  {
+   "label": "written",
+   "t": 35.742
+  },
+  {
+   "label": "approve",
+   "t": 46.29
+  }
+ ]
+}

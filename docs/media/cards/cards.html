@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: Stack; src: url("../../../apps/web/app/fonts/bricolage-stack.woff2"); font-weight: 800; }
+  html, body { margin: 0; }
+  .card { width: 1920px; height: 1080px; box-sizing: border-box; padding: 0 160px; display: flex; flex-direction: column; justify-content: center; background: #111216; color: #f3f3f1; font-family: "Segoe UI", Inter, sans-serif; position: relative; overflow: hidden; }
+  .card.paper { background: #f3f3f1; color: #111216; }
+  .logo { height: 96px; align-self: flex-start; margin-left: -20px; }
+  .big { font-family: Stack, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: -.01em; font-size: 168px; margin: 56px 0 0; }
+  .big .c { color: #ff5a36; }
+  .sub { font-size: 40px; margin-top: 40px; color: #9c9ea5; }
+  .url { font-family: Consolas, "JetBrains Mono", monospace; font-size: 56px; margin-top: 52px; color: #f3f3f1; }
+  .by { position: absolute; left: 160px; bottom: 90px; font-size: 30px; color: #9c9ea5; letter-spacing: .02em; }
+  .rule { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; background: #ff5a36; }
+</style>
+</head>
+<body>
+  <div class="card" id="title">
+    <img class="logo" src="../../../apps/web/public/brand/overlap-logo-horizontal-dark.svg" />
+    <div class="big">Find sponsors<br />your fans <span class="c">already love.</span></div>
+    <div class="sub">A sponsorship agent for tours and festivals, built on Qloo's taste graph.</div>
+    <div class="rule"></div>
+  </div>
+  <div class="card" id="thumb" style="width:1620px;height:1080px;padding:0 120px">
+    <img class="logo" src="../../../apps/web/public/brand/overlap-logo-horizontal-dark.svg" />
+    <div class="big" style="font-size:150px">Find sponsors<br />your fans <span class="c">already love.</span></div>
+    <div class="sub" style="font-size:38px">Sponsorship agent for tours · Qloo taste graph + Claude</div>
+    <div class="rule"></div>
+  </div>
+  <div class="card" id="end">
+    <img class="logo" src="../../../apps/web/public/brand/overlap-logo-horizontal-dark.svg" />
+    <div class="big">Try it <span class="c">live.</span></div>
+    <div class="url">overlap.u.co.uz</div>
+    <div class="sub">No login. Open an example or enter your own tour.</div>
+    <div class="by">Qloo Insights API · Claude (Haiku 5.5 agent, Sonnet 5.5 pitches) · Qloo Agentic Hackathon 2026</div>
+    <div class="rule"></div>
+  </div>
+</body>
+</html>
