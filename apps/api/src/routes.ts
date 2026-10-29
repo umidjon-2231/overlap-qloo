@@ -12,6 +12,7 @@ import { llmOnlyBaseline } from "./agent/baseline.js";
 import { draftPitch } from "./pitch/draft.js";
 import { renderPitchPdf } from "./pitch/pdf.js";
 import { presets } from "./presets.js";
+import { clientIp, demoStatus, fromOwnSite, guard, record } from "./demo/guard.js";
 
 export const api = new Hono();
 
@@ -35,23 +36,21 @@ const createRunSchema = z.object({
     .optional(),
 });
 
-/* Simple protection for a public demo: global concurrency and per-IP hourly limits. */
+/* Public-demo protection: global concurrency here; budgets, per-IP limits and alerts in demo/guard.ts. */
 const MAX_CONCURRENT_RUNS = 3;
-const MAX_RUNS_PER_IP_HOUR = 8;
-const ipRuns = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (ipRuns.get(ip) ?? []).filter((t) => now - t < 3_600_000);
-  ipRuns.set(ip, recent);
-  if (recent.length >= MAX_RUNS_PER_IP_HOUR) return true;
-  recent.push(now);
-  return false;
-}
+const MAX_CONCURRENT_PITCHES = 2;
+let pitchesInFlight = 0;
+const OWN_SITE_ONLY = "Live runs start from the Overlap website.";
 
 const PRESET_CACHE_MS = env.PRESET_CACHE_HOURS * 3_600_000;
 
 api.get("/presets", (c) => c.json(presets));
+
+/** Whether live runs are open right now (no spend figures; those go to the owner's Telegram). */
+api.get("/demo-status", async (c) => {
+  const s = await demoStatus();
+  return c.json({ live: s.live, reason: s.reason ?? null });
+});
 
 api.get("/runs", async (c) => {
   const rows = await db
@@ -73,7 +72,8 @@ api.post("/runs", async (c) => {
   const parsed = createRunSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: "Invalid input", issues: parsed.error.issues }, 400);
   const { presetId, fresh, config: overrides, ...input } = parsed.data;
-  const config: AgentConfig = { ...defaultConfig(), ...overrides };
+  // The public demo always runs the default model; overrides are for local experiments.
+  const config: AgentConfig = { ...defaultConfig(), ...(env.ALLOW_RUN_CONFIG ? overrides : {}) };
 
   if (presetId && !fresh) {
     const [cached] = await db
@@ -92,13 +92,15 @@ api.post("/runs", async (c) => {
     if (cached) return c.json({ runId: cached.id, cached: true });
   }
 
+  if (!fromOwnSite(c)) return c.json({ error: OWN_SITE_ONLY }, 403);
   const active = await db.select({ id: runs.id }).from(runs).where(eq(runs.status, "running"));
   if (active.length >= MAX_CONCURRENT_RUNS) return c.json({ error: "Too many runs in progress. Try again in a minute." }, 429);
-  // The host proxy (Apache) appends the real client address last; earlier entries are client-supplied.
-  const ip = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() || "local";
-  if (rateLimited(ip)) return c.json({ error: "Hourly run limit reached for this demo." }, 429);
+  const ip = clientIp(c);
+  const blocked = await guard("run", ip);
+  if (blocked) return c.json({ error: blocked.error }, blocked.status);
 
   const runId = await startRun({ ...input, presetId }, config);
+  await record("run", ip, runId);
   return c.json({ runId, cached: false }, 201);
 });
 
@@ -197,9 +199,20 @@ api.post("/runs/:id/resolve", async (c) => {
 });
 
 api.post("/runs/:id/llm-only", async (c) => {
+  const runId = c.req.param("id");
   try {
-    const out = await llmOnlyBaseline(c.req.param("id"));
+    // A saved comparison costs nothing to serve; only a new one asks the model.
+    const [run] = await db.select({ llmOnly: runs.llmOnly }).from(runs).where(eq(runs.id, runId));
+    if (!run) return c.json({ error: "Run not found" }, 404);
+    const ip = clientIp(c);
+    if (!run.llmOnly) {
+      if (!fromOwnSite(c)) return c.json({ error: OWN_SITE_ONLY }, 403);
+      const blocked = await guard("llm_only", ip);
+      if (blocked) return c.json({ error: blocked.error }, blocked.status);
+    }
+    const out = await llmOnlyBaseline(runId);
     if (!out) return c.json({ error: "Run not found" }, 404);
+    if (!run.llmOnly) await record("llm_only", ip, runId, out.usage?.costUsd ?? 0);
     return c.json(out);
   } catch (e) {
     console.error("llm-only failed:", e);
@@ -207,23 +220,50 @@ api.post("/runs/:id/llm-only", async (c) => {
   }
 });
 
+const pitchKey = (runId: string, brandId: string) =>
+  and(eq(pitchPacks.runId, runId), eq(pitchPacks.brandEntityId, brandId));
+
+const EXAMPLE_READ_ONLY = "Example pitches are read-only. Try your own tour to write and edit pitches.";
+
+/** True for the shared example runs, whose pitches every visitor sees. */
+async function isExample(runId: string): Promise<boolean> {
+  const [run] = await db.select({ presetId: runs.presetId }).from(runs).where(eq(runs.id, runId));
+  return !!run?.presetId;
+}
+
 api.post("/runs/:id/pitch/:brandId", async (c) => {
+  const runId = c.req.param("id");
+  const brandId = c.req.param("brandId");
+  // "Write it again" sends ?again=1; anything else reuses a saved draft instead of paying for a new one.
+  const again = c.req.query("again") === "1";
+  const [existing] = await db.select().from(pitchPacks).where(pitchKey(runId, brandId));
+  if (existing && !again) return c.json({ bodyMd: existing.bodyMd, reused: true });
+  if (existing && (await isExample(runId))) return c.json({ error: EXAMPLE_READ_ONLY }, 403);
+  if (!fromOwnSite(c)) return c.json({ error: OWN_SITE_ONLY }, 403);
+  if (pitchesInFlight >= MAX_CONCURRENT_PITCHES) return c.json({ error: "Other pitches are being written. Try again in a minute." }, 429);
+
+  const ip = clientIp(c);
+  const blocked = await guard("pitch", ip);
+  if (blocked) return c.json({ error: blocked.error }, blocked.status);
+
+  pitchesInFlight++;
   try {
-    const out = await draftPitch(c.req.param("id"), c.req.param("brandId"));
+    const out = await draftPitch(runId, brandId);
     if (!out) return c.json({ error: "Brand not found in this run" }, 404);
+    await record("pitch", ip, runId, (out.usage as { costUsd?: number } | undefined)?.costUsd ?? 0);
     return c.json(out);
   } catch (e) {
     console.error("pitch failed:", e);
     return c.json({ error: e instanceof Error ? e.message : "Pitch failed" }, 502);
+  } finally {
+    pitchesInFlight--;
   }
 });
-
-const pitchKey = (runId: string, brandId: string) =>
-  and(eq(pitchPacks.runId, runId), eq(pitchPacks.brandEntityId, brandId));
 
 api.patch("/runs/:id/pitch/:brandId", async (c) => {
   const body = z.object({ bodyMd: z.string().min(1).max(50_000) }).safeParse(await c.req.json().catch(() => null));
   if (!body.success) return c.json({ error: "Invalid input" }, 400);
+  if (await isExample(c.req.param("id"))) return c.json({ error: EXAMPLE_READ_ONLY }, 403);
   // Any edit withdraws approval: the seller approves the exact text that gets exported.
   const [row] = await db
     .update(pitchPacks)

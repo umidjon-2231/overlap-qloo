@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { markInterruptedRuns } from "./agent/orchestrator.js";
+import { checkAlerts } from "./demo/guard.js";
 import { sql } from "./db/client.js";
 import { env } from "./env.js";
 import { api } from "./routes.js";
@@ -24,6 +25,10 @@ app.get("/health", async (c) => {
 app.route("/", api);
 
 await markInterruptedRuns();
+
+// Agent runs record their cost as they go, so budget alerts are also checked on a timer.
+setInterval(() => void checkAlerts(), 10 * 60_000).unref();
+void checkAlerts();
 
 serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
   console.log(`api listening on http://localhost:${info.port}`);

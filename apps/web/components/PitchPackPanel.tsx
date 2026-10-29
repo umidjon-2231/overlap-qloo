@@ -143,23 +143,28 @@ export function PitchPackPanel({
                     )}
                   </>
                 )}
-                <div className="ml-auto flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(!editing)}
-                    className="text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline"
-                  >
-                    {editing ? "Done editing" : "Edit text"}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-40"
-                    disabled={busy !== null}
-                    onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId))}
-                  >
-                    Write it again
-                  </button>
-                </div>
+                {/* Example pitches are shared by every visitor, so they can't be edited or rewritten. */}
+                {data.run.presetId ? (
+                  <span className="ml-auto text-sm text-ink-soft">Example pitch: try your own tour to edit one.</span>
+                ) : (
+                  <div className="ml-auto flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(!editing)}
+                      className="text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+                    >
+                      {editing ? "Done editing" : "Edit text"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-40"
+                      disabled={busy !== null}
+                      onClick={() => act("draft", () => api.draftPitch(data.run.id, brand.brandEntityId, true))}
+                    >
+                      Write it again
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="bg-sheet px-5 py-6 sm:px-8">

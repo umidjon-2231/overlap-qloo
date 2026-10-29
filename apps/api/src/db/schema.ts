@@ -154,6 +154,21 @@ export const qlooCache = pgTable("qloo_cache", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+/**
+ * Public-demo ledger: one row per live run, pitch draft or LLM-only comparison (for per-IP limits and
+ * model spend) and per alert sent (kind "alert", note = the period it covers, so each fires once).
+ * Agent run cost lives on runs.usage; this table carries the cost of everything else.
+ */
+export const demoEvents = pgTable("demo_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  kind: text("kind").$type<"run" | "pitch" | "llm_only" | "alert">().notNull(),
+  ip: text("ip"),
+  runId: uuid("run_id").references(() => runs.id, { onDelete: "set null" }),
+  costUsd: doublePrecision("cost_usd").notNull().default(0),
+  note: text("note"),
+  createdAt: createdAt(),
+});
+
 /** Model × effort × toolset comparison runs. */
 export const bakeoffResults = pgTable("bakeoff_results", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

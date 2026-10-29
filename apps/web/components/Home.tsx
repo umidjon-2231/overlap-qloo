@@ -14,8 +14,12 @@ export function Home() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Set when the public demo's budget is used up; the examples keep working.
+  const [paused, setPaused] = useState<string | null>(null);
+
   useEffect(() => {
     api.presets().then(setPresets).catch((e: Error) => setError(`Could not reach the Overlap API: ${e.message}`));
+    api.demoStatus().then((s) => setPaused(s.live ? null : s.reason)).catch(() => {});
   }, []);
 
   async function launch(key: string, input: Parameters<typeof api.createRun>[0]) {
@@ -92,7 +96,11 @@ export function Home() {
           <h2 id="your-tour" className="display text-[1.9rem]">
             Or try your own tour
           </h2>
-          <p className="mt-1 text-sm text-ink-soft">Takes about a minute.</p>
+          {paused ? (
+            <p className="mt-2 max-w-2xl border-t-2 border-warn pt-2 text-sm">{paused}</p>
+          ) : (
+            <p className="mt-1 text-sm text-ink-soft">Takes about a minute.</p>
+          )}
           <div className="mt-4">
             <TourForm busy={busy === "custom"} onSubmit={(input) => launch("custom", input)} />
           </div>

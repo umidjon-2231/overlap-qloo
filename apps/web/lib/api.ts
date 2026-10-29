@@ -193,8 +193,10 @@ export const api = {
   resolve: (id: string, entityId: string, name: string) =>
     request<{ ok: true }>(`/runs/${id}/resolve`, { method: "POST", body: JSON.stringify({ entityId, name }) }),
   llmOnly: (id: string) => request<LlmOnly>(`/runs/${id}/llm-only`, { method: "POST" }),
-  draftPitch: (id: string, brandId: string) =>
-    request<{ bodyMd: string }>(`/runs/${id}/pitch/${brandId}`, { method: "POST" }),
+  /** `again` asks for a new draft; without it a saved draft is returned as is. */
+  draftPitch: (id: string, brandId: string, again = false) =>
+    request<{ bodyMd: string }>(`/runs/${id}/pitch/${brandId}${again ? "?again=1" : ""}`, { method: "POST" }),
+  demoStatus: () => request<{ live: boolean; reason: string | null }>("/demo-status"),
   savePitch: (id: string, brandId: string, bodyMd: string) =>
     request<PitchPack>(`/runs/${id}/pitch/${brandId}`, { method: "PATCH", body: JSON.stringify({ bodyMd }) }),
   approvePitch: (id: string, brandId: string) =>
