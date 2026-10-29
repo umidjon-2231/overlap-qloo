@@ -65,6 +65,24 @@ https://overlap.u.co.uz: a single VPS running docker compose; GitHub Actions dep
 - **Auto deploy:** every push to `main` (except docs/Markdown/brand) runs a GitHub Actions workflow: typecheck, then a deploy script on the server that fast-forwards to `main`, rebuilds and waits for health. (The workflow and server scripts are kept in the private deployment repository.)
 - The demo must stay up through judging (Nov 2–16, 2026). Example runs stay cached for 30 days on the server; re-warm with `docker compose exec api pnpm exec tsx src/scripts/run-agent.ts <presetId>`.
 
+## Public-demo protection
+
+The Anthropic key lives in its own workspace with a console spend limit; that is the hard stop. Inside the app (`apps/api/src/demo/guard.ts`):
+
+| Layer | Default | Over the limit |
+|---|---|---|
+| Model spend per rolling hour / UTC day / UTC month (estimated from token usage) | $3 / $10 / $30 | Live runs, new pitches and new comparisons pause (503, friendly message, home page notice); examples and finished results keep working |
+| Uncached Qloo calls per UTC day | 1500 | Same pause (protects the monthly Qloo quota) |
+| Per IP: runs / pitches per hour, guarded requests per day | 8 / 10, 30 | 429 |
+| At once: runs / pitch drafts | 3 / 2 | 429 |
+| Origin | the demo's own site | 403 |
+| Pitches | a saved draft is reused unless "Write it again"; example pitches are read-only | 403 on rewrite/edit |
+| Agent model | always the server default (`ALLOW_RUN_CONFIG=true` only for local experiments) | client choice ignored |
+
+Telegram (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) gets one alert per period at 80% and 100% of each budget, and when the hourly cap trips. Per-IP counts and alerts are rows in `demo_events`, so they survive restarts. `GET /demo-status` tells the web app whether live runs are open (no amounts).
+
+On the server, the fail2ban jail `overlap-abuse` (files in `deploy/fail2ban/`) bans an IP from ports 80/443 for a day after 10 refused (403/429) calls to `/api/runs…` within 10 minutes. 503s (the global pause) are not counted. `fail2ban-client status overlap-abuse` shows bans; `fail2ban-client set overlap-abuse unbanip <ip>` lifts one.
+
 ## Cost reference
 
 - Agent run (Haiku 5.5 high): about $0.007–0.014 in Claude usage and 18–51 Qloo lookups per run (the production example runs' recorded `usage`, cost estimated from token counts; the bake-off measured $0.007–0.012). Qloo lookups served from the cache cost no quota.

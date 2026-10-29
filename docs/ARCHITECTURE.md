@@ -62,7 +62,8 @@ The agent is a black box on screen: no reasoning text and no tool names. `apps/w
 | `apps/api/src/agent/events.ts` | Ordered run events: persisted + pushed to SSE subscribers |
 | `apps/api/src/agent/baseline.ts` | LLM-only baseline for "With Qloo vs without" |
 | `apps/api/src/pitch/` | `draft.ts` (evidence pack + Claude call), `pdf.ts` (branded PDF; fonts in `apps/api/assets/fonts`) |
-| `apps/api/src/routes.ts` | HTTP API, demo rate limits, preset caching |
+| `apps/api/src/routes.ts` | HTTP API, preset caching, concurrency caps |
+| `apps/api/src/demo/guard.ts` | Public-demo guard: hourly/daily/monthly model budget, daily Qloo cap, per-IP limits (in `demo_events`), own-site check, Telegram alerts |
 | `apps/web/components/` | `Home` (examples and the tour form), `RunView` (header, short answer, tabs), `TourStack` (city rail while working), `Discoveries` + `TourRoute` (run stage), `Results` (Brands, Cities, Compare: brand by city and With Qloo vs without), `PitchPackPanel` (pitch view), `PressLoop`, `Provenance` |
 | `apps/web/lib/progress.ts` | Events → city states, plain status lines, visit order, early findings |
 
