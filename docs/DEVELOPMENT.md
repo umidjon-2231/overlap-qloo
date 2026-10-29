@@ -81,7 +81,7 @@ The Anthropic key lives in its own workspace with a console spend limit; that is
 
 Telegram (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) gets one alert per period at 80% and 100% of each budget, and when the hourly cap trips. Per-IP counts and alerts are rows in `demo_events`, so they survive restarts. `GET /demo-status` tells the web app whether live runs are open (no amounts).
 
-On the server, the fail2ban jail `overlap-abuse` (files in `deploy/fail2ban/`) bans an IP from ports 80/443 for a day after 10 refused (403/429) calls to `/api/runs…` within 10 minutes. 503s (the global pause) are not counted. `fail2ban-client status overlap-abuse` shows bans; `fail2ban-client set overlap-abuse unbanip <ip>` lifts one.
+On the server, the fail2ban jail `overlap-abuse` (its config is kept with the private deployment files) bans an IP from ports 80/443 for a day after 10 refused (403/429) calls to `/api/runs…` within 10 minutes. 503s (the global pause) are not counted. `fail2ban-client status overlap-abuse` shows bans; `fail2ban-client set overlap-abuse unbanip <ip>` lifts one.
 
 ## Cost reference
 
